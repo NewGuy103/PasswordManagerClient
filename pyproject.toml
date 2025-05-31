@@ -1,0 +1,27 @@
+[project]
+name = "passwordmanagerclient"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "attrs>=25.3.0",
+    "httpx>=0.28.1",
+    "keyring>=25.6.0",
+    "platformdirs>=4.3.8",
+    "pydantic-settings>=2.9.1",
+    "pyside6>=6.9.0",
+    "python-dateutil>=2.9.0.post0",
+]
+
+[dependency-groups]
+dev = [
+    "openapi-python-client>=0.24.3",
+    "ruff>=0.11.12",
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["F", "I", "UP"]
