@@ -19,6 +19,7 @@ if typing.TYPE_CHECKING:
     from ..main import MainWindow
 
 
+# TODO: Scrap this and make sure the app can function without requiring a login
 class LoginController(QObject):
     login_done = Signal(AvailableLogins)
     
@@ -29,6 +30,7 @@ class LoginController(QObject):
         self.ui = mw_parent.ui
 
         self.provided_username = None
+        self.client: Client = None
 
         self.ui.loginButton.clicked.connect(self.login_start)
         self.ui.serverURILineEdit.setFocus()
@@ -47,7 +49,7 @@ class LoginController(QObject):
                 continue
 
             auth_header = keyring.get_password(
-                'newguy103-syncserver',
+                'newguy103-passwordmanager',
                 login_model.username
             )
 
@@ -95,7 +97,7 @@ class LoginController(QObject):
             )
             return
         
-        client = Client(base_url=server_url, raise_on_unexpected_status=True)
+        self.client = Client(base_url=server_url, raise_on_unexpected_status=True)
         body = TokenLoginBody(
             grant_type='password',
             username=username,
@@ -104,7 +106,7 @@ class LoginController(QObject):
 
         func = partial(
             token_login.sync_detailed,
-            client=client, body=body
+            client=self.client, body=body
         )
         
         self._worker_refs = make_worker_thread(func, self.on_worker_complete, self.on_worker_exc)
@@ -175,6 +177,7 @@ class LoginController(QObject):
         self.mw_parent.app_settings.save_settings()
 
         self.login_done.emit(login_model)
+        self.client.get_httpx_client().close()
         return
     
     @Slot(Exception)

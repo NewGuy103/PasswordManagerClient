@@ -9,9 +9,16 @@ from pydantic_settings import BaseSettings, JsonConfigSettingsSource, PydanticBa
 from .version import __version__
 
 dirs = PlatformDirs("passwordmanager-client", "newguy103", version=__version__)
-config_file_src = Path(dirs.user_config_dir) / 'config.json'
-
 logger: logging.Logger = logging.getLogger('passwordmanager-client')
+
+
+class AppFilePaths(BaseModel):
+    log_file: Path = Path(dirs.user_config_dir) / 'client.log'
+    sqlite_file: Path = Path(dirs.user_data_dir) / 'localdb.db'
+    config_file: Path = Path(dirs.user_config_dir) / 'config.json'
+
+
+app_file_paths = AppFilePaths()
 
 
 def setup_logger(level: int):
@@ -28,7 +35,7 @@ def setup_logger(level: int):
     stream_handler: logging.StreamHandler = logging.StreamHandler()
     stream_handler.setFormatter(formatter)
 
-    file_handler: logging.FileHandler = logging.FileHandler(Path(dirs.user_config_dir) / 'client.log')
+    file_handler: logging.FileHandler = logging.FileHandler(app_file_paths.log_file)
     file_handler.setFormatter(formatter)
 
     logger.addHandler(stream_handler)
@@ -50,7 +57,7 @@ class AvailableLogins(BaseModel):
 
 
 class AppSettings(BaseSettings):
-    model_config = SettingsConfigDict(json_file=config_file_src, validate_assignment=True)
+    model_config = SettingsConfigDict(json_file=app_file_paths.config_file, validate_assignment=True)
 
     logins: list[AvailableLogins] = []
     log_level: LogLevels = LogLevels.debug.value
@@ -67,5 +74,5 @@ class AppSettings(BaseSettings):
         return (JsonConfigSettingsSource(settings_cls),)
 
     def save_settings(self):
-        with open(config_file_src, 'w') as file:
+        with open(app_file_paths.config_file, 'w') as file:
             file.write(self.model_dump_json(indent=4))
