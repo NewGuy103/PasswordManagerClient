@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'main.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.0
+## Created by: Qt User Interface Compiler version 6.9.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -21,8 +21,7 @@ from PySide6.QtWidgets import (QApplication, QComboBox, QFrame, QGridLayout,
     QLineEdit, QListView, QListWidget, QListWidgetItem,
     QMainWindow, QMenu, QMenuBar, QPushButton,
     QSizePolicy, QSpacerItem, QStackedWidget, QStatusBar,
-    QTabWidget, QTreeWidget, QTreeWidgetItem, QVBoxLayout,
-    QWidget)
+    QTabWidget, QTreeView, QVBoxLayout, QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -127,15 +126,16 @@ class Ui_MainWindow(object):
         self.frame.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_5 = QHBoxLayout(self.frame)
         self.horizontalLayout_5.setObjectName(u"horizontalLayout_5")
-        self.passwordGroupsTreeWidget = QTreeWidget(self.frame)
-        self.passwordGroupsTreeWidget.setObjectName(u"passwordGroupsTreeWidget")
+        self.passwordGroupsTreeView = QTreeView(self.frame)
+        self.passwordGroupsTreeView.setObjectName(u"passwordGroupsTreeView")
         sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Expanding)
         sizePolicy3.setHorizontalStretch(0)
         sizePolicy3.setVerticalStretch(0)
-        sizePolicy3.setHeightForWidth(self.passwordGroupsTreeWidget.sizePolicy().hasHeightForWidth())
-        self.passwordGroupsTreeWidget.setSizePolicy(sizePolicy3)
+        sizePolicy3.setHeightForWidth(self.passwordGroupsTreeView.sizePolicy().hasHeightForWidth())
+        self.passwordGroupsTreeView.setSizePolicy(sizePolicy3)
+        self.passwordGroupsTreeView.header().setDefaultSectionSize(21)
 
-        self.horizontalLayout_5.addWidget(self.passwordGroupsTreeWidget)
+        self.horizontalLayout_5.addWidget(self.passwordGroupsTreeView)
 
         self.passwordEntriesWidget = QWidget(self.frame)
         self.passwordEntriesWidget.setObjectName(u"passwordEntriesWidget")
@@ -355,8 +355,6 @@ class Ui_MainWindow(object):
         self.usernameLineEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Enter username", None))
         self.passwordLineEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Enter password", None))
         self.loginButton.setText(QCoreApplication.translate("MainWindow", u"Login", None))
-        ___qtreewidgetitem = self.passwordGroupsTreeWidget.headerItem()
-        ___qtreewidgetitem.setText(0, QCoreApplication.translate("MainWindow", u"Root", None));
         self.appTabWidget.setTabText(self.appTabWidget.indexOf(self.passwordsTab), QCoreApplication.translate("MainWindow", u"Passwords", None))
         self.availableLoginsGroupbox.setTitle(QCoreApplication.translate("MainWindow", u"Available Logins", None))
         self.addAccountButton.setText(QCoreApplication.translate("MainWindow", u"Add Login", None))

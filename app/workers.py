@@ -24,16 +24,19 @@ class WorkerThread(QObject):
 
 def make_worker_thread(
     func: Callable[[], Any], 
-    data_func: Callable[[object], Any], 
-    exc_callback: Callable[[Exception], Any]
+    data_func: Callable[[object], Any] | None = None,
+    exc_callback: Callable[[Exception], Any] | None = None
 ) -> tuple[WorkerThread, QThread]:
     worker = WorkerThread(func)
     thread = QThread()
     
     worker.moveToThread(thread)
     
-    worker.dataReady.connect(data_func)
-    worker.excReceived.connect(exc_callback)
+    if data_func is not None:
+        worker.dataReady.connect(data_func)
+    
+    if exc_callback is not None:
+        worker.excReceived.connect(exc_callback)
     
     thread.started.connect(worker.run)
     worker.dataReady.connect(thread.quit)

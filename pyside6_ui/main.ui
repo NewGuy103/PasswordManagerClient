@@ -169,18 +169,16 @@
               </property>
               <layout class="QHBoxLayout" name="horizontalLayout_5">
                <item>
-                <widget class="QTreeWidget" name="passwordGroupsTreeWidget">
+                <widget class="QTreeView" name="passwordGroupsTreeView">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Maximum" vsizetype="Expanding">
                    <horstretch>0</horstretch>
                    <verstretch>0</verstretch>
                   </sizepolicy>
                  </property>
-                 <column>
-                  <property name="text">
-                   <string>Root</string>
-                  </property>
-                 </column>
+                 <attribute name="headerDefaultSectionSize">
+                  <number>21</number>
+                 </attribute>
                 </widget>
                </item>
                <item>

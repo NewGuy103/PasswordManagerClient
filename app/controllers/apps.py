@@ -4,7 +4,6 @@ from PySide6.QtCore import QObject, QThread, Signal, Slot
 from PySide6.QtWidgets import QMessageBox
 
 from .tabs.passwords import PasswordsTabController
-from .tabs.settings import SettingsTabController
 
 if typing.TYPE_CHECKING:
     from ..main import MainWindow

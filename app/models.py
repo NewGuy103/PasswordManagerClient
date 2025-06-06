@@ -1,9 +1,41 @@
+import uuid
+
 from pydantic import BaseModel
 
 
 # State models
-class AddPasswordEntryData(BaseModel):
+class PasswordEntryBase(BaseModel):
     entry_name: str
     username: str
+
     password: str
     url: str
+
+
+class AddPasswordEntry(PasswordEntryBase):
+    pass
+
+
+class PasswordEntryData(PasswordEntryBase):
+    entry_id: uuid.UUID
+    # group_id: uuid.UUID
+    pass
+
+
+class GroupBase(BaseModel):
+    group_id: uuid.UUID
+    group_name: str
+    parent_id: uuid.UUID | None
+
+
+class GroupSingleData(GroupBase):
+    pass
+
+
+class GroupParentData(GroupBase):
+    child_groups: list['GroupChildrenData']
+
+
+# Leave out child_groups intentionally
+class GroupChildrenData(GroupBase):
+    parent_id: uuid.UUID

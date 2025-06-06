@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox
 
 from .config import AppSettings, setup_logger
 from .controllers.apps import AppsController
+from .localdb.database import database
 from .ui.main import Ui_MainWindow
 
 
@@ -35,16 +36,20 @@ class MainWindow(QMainWindow):
     def setup_config(self):
         try:
             self.app_settings = AppSettings()
-            self.config_loaded()
         except Exception as exc:
             self.config_load_failed(exc)
+            return
+        
+        self.config_loaded()
 
     def config_loaded(self):
         setup_logger(self.app_settings.log_level)        
+        database.setup()
+
         self.app_ctrl = AppsController(self)
 
     def config_load_failed(self, exc: Exception):
-        tb: str = ''.join(traceback.format_exception(exc))
+        tb: str = ''.join(traceback.format_exception(exc, limit=1))
 
         QMessageBox.critical(
             self,
