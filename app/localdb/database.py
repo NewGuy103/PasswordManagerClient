@@ -9,7 +9,7 @@ from sqlmodel import Session, SQLModel, create_engine, select, text, true
 
 from ..config import app_file_paths
 from ..localdb.dbtables import PasswordEntry, PasswordGroups
-from ..models import GroupChildrenData, GroupParentData, GroupSingleData, PasswordEntryData
+from ..models import GroupChildrenData, GroupParentData, PasswordEntryData
 
 logger: logging.Logger = logging.getLogger("passwordmanager-client")
 DEFAULT_CHUNK_SIZE: int = 25 * 1024 * 1024  # 25 MiB
@@ -83,15 +83,9 @@ class PasswordGroupMethods:
                 is_root=False if parent_id else True
             )
             session.add(new_group)
-
-            group_data = GroupSingleData(
-                group_id=new_group.group_id,
-                group_name=group_name,
-                parent_id=parent_id
-            )
             session.commit()
         
-        return group_data
+            return self.get_children_of_group(new_group.group_id)
 
     def get_children_of_root(self) -> GroupParentData:
         with Session(self.engine) as session:
@@ -131,7 +125,7 @@ class PasswordGroupMethods:
             group = result.one()
 
             if group.is_root:
-                raise ValueError("use get_children_of_root() instead")
+                return self.get_children_of_root()
             
             child_models: list[GroupChildrenData] = []
             for child in group.child_groups:
@@ -142,7 +136,7 @@ class PasswordGroupMethods:
                 )
                 child_models.append(child_model)
             
-            model = GroupPublicGet(
+            model = GroupParentData(
                 group_name=group.group_name,
                 parent_id=group.parent_id,
                 group_id=group.group_id,
@@ -169,16 +163,6 @@ class PasswordGroupMethods:
 
         return True
 
-    def get_root_group_id(self) -> uuid.UUID:
-        with Session(self.engine) as session:
-            result = session.exec(
-                select(PasswordGroups)
-                .where(PasswordGroups.is_root == true())
-            )
-            root_group = result.one()
-
-            return root_group.group_id
-    
 
 class PasswordEntryMethods:
     def __init__(self, parent: MainDatabase):

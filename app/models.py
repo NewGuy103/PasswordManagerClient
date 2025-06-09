@@ -22,14 +22,15 @@ class PasswordEntryData(PasswordEntryBase):
     pass
 
 
+# TODO: Extend this when adding metadata
+class AddPasswordGroup(BaseModel):
+    group_name: str
+
+
 class GroupBase(BaseModel):
     group_id: uuid.UUID
     group_name: str
     parent_id: uuid.UUID | None
-
-
-class GroupSingleData(GroupBase):
-    pass
 
 
 class GroupParentData(GroupBase):
