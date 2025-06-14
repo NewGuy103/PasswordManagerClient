@@ -16,12 +16,13 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QIcon, QImage, QKeySequence, QLinearGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
-from PySide6.QtWidgets import (QApplication, QComboBox, QFrame, QGridLayout,
-    QGroupBox, QHBoxLayout, QHeaderView, QLabel,
-    QLineEdit, QListView, QListWidget, QListWidgetItem,
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QComboBox, QFrame,
+    QGridLayout, QGroupBox, QHBoxLayout, QHeaderView,
+    QLabel, QLineEdit, QListWidget, QListWidgetItem,
     QMainWindow, QMenu, QMenuBar, QPushButton,
     QSizePolicy, QSpacerItem, QStackedWidget, QStatusBar,
-    QTabWidget, QTreeView, QVBoxLayout, QWidget)
+    QTabWidget, QTableView, QTreeView, QVBoxLayout,
+    QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -141,12 +142,14 @@ class Ui_MainWindow(object):
         self.passwordEntriesWidget.setObjectName(u"passwordEntriesWidget")
         self.verticalLayout_8 = QVBoxLayout(self.passwordEntriesWidget)
         self.verticalLayout_8.setObjectName(u"verticalLayout_8")
-        self.passwordEntriesListView = QListView(self.passwordEntriesWidget)
-        self.passwordEntriesListView.setObjectName(u"passwordEntriesListView")
-        sizePolicy1.setHeightForWidth(self.passwordEntriesListView.sizePolicy().hasHeightForWidth())
-        self.passwordEntriesListView.setSizePolicy(sizePolicy1)
+        self.passwordEntriesTableView = QTableView(self.passwordEntriesWidget)
+        self.passwordEntriesTableView.setObjectName(u"passwordEntriesTableView")
+        sizePolicy1.setHeightForWidth(self.passwordEntriesTableView.sizePolicy().hasHeightForWidth())
+        self.passwordEntriesTableView.setSizePolicy(sizePolicy1)
+        self.passwordEntriesTableView.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.passwordEntriesTableView.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
 
-        self.verticalLayout_8.addWidget(self.passwordEntriesListView)
+        self.verticalLayout_8.addWidget(self.passwordEntriesTableView)
 
         self.passwordEntryInfoFrame = QFrame(self.passwordEntriesWidget)
         self.passwordEntryInfoFrame.setObjectName(u"passwordEntryInfoFrame")

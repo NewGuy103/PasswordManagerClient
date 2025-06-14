@@ -3,7 +3,7 @@ import typing
 import uuid
 from functools import partial
 
-from PySide6.QtCore import QAbstractListModel, QModelIndex, QObject, Qt, Signal, Slot
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, QObject, Qt, Signal, Slot
 from PySide6.QtGui import QAction, QIcon, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import QDialog, QHeaderView, QMenu, QMessageBox
 
@@ -20,76 +20,71 @@ if typing.TYPE_CHECKING:
 logger: logging.Logger = logging.getLogger("passwordmanager-client")
 
 
-# TODO: If possible, make this a table model so i dont rely on string lists
-class PasswordEntriesModel(QAbstractListModel):
+class PasswordEntriesTableModel(QAbstractTableModel):
     def __init__(self, /, parent: 'PasswordEntriesViewController' = None):
         super().__init__(parent)
         self.pw_ctrl = parent
 
-        self.worker_exc_received = parent.pw_parent.worker_exc_received
+        self._display_data: list[list[str]] = []
+        self._item_data: list[PasswordEntryData] = []
 
-        self.display_entries: list[str] = []  # list[str] for now
-        self.item_entries: list[PasswordEntryData] = []  # table is probably better
+        self._col_headers: list[str] = ['Entry Name', 'Username', 'URL']
     
-    def load_data_for_group(self, group_id: uuid.UUID):
-        @Slot(list)
-        def query_complete(entries: list[PasswordEntryData]):
-            self.beginResetModel()
+    def rowCount(self, /, parent=QModelIndex()):
+        return len(self._item_data)
 
-            self.item_entries.clear()
-            self.display_entries.clear()
-
-            for data in entries:
-                self.item_entries.append(data)
-                self.display_entries.append(f"[{data.entry_id}] Entry name: {data.entry_name}"
-                                    f" - {data.username} | {data.password} | {data.url}")
-
-            self.endResetModel()
-
-        func = partial(database.entries.get_entries_by_group, group_id)
-        make_worker_thread(func, data_func=query_complete, exc_callback=self.worker_exc_received)
-
-    def data(self, index: QModelIndex, role: Qt.ItemDataRole):
-        if role == Qt.ItemDataRole.DisplayRole:
-            text = self.display_entries[index.row()]
-            return text
-        
+    def columnCount(self, /, parent=QModelIndex()):
+        return len(self._col_headers)
+    
+    def data(self, index, /, role):
         if role == Qt.ItemDataRole.UserRole:
-            item: PasswordEntryData = self.item_entries[index.row()]
-            return item
+            return self._item_data[index.row()]
+        
+        if role == Qt.ItemDataRole.DisplayRole:
+            return self._display_data[index.row()][index.column()]
         
         return None
     
-    def rowCount(self, /, index: QModelIndex):
-        return len(self.item_entries)
-    
-    def add_entry(self, group_id: uuid.UUID, data: AddPasswordEntry) -> None:
-        @Slot()
-        def create_complete(entry: PasswordEntryData):
-            self.item_entries.append(entry)
-            self.display_entries.append(f"[{entry.entry_id}] Entry name: {entry.entry_name} - "
-                                        f"{entry.username} | {entry.password} | {entry.url}")
-            self.layoutChanged.emit()
-
-            logger.info("Created entry '%s'", entry.entry_id)
+    def headerData(self, section, orientation, /, role):
+        if role != Qt.ItemDataRole.DisplayRole:
+            return None
         
-        func = partial(
-            database.entries.create_entry, group_id,
-            data.entry_name, data.username, data.password, data.url
-        )
-        make_worker_thread(func, data_func=create_complete, exc_callback=self.worker_exc_received)
-    
-    def delete_entry(self, parent: QModelIndex, entry_id: uuid.UUID):
-        @Slot()
-        def delete_complete():
-            del self.item_entries[parent.row()]
-            del self.display_entries[parent.row()]
+        if orientation == Qt.Orientation.Horizontal:
+            return self._col_headers[section]
 
-            self.layoutChanged.emit()
-            logger.info("Deleted entry ID '%s'", entry_id)
-        
-        func = partial(database.entries.delete_entry_by_id, entry_id)
-        make_worker_thread(func, data_func=delete_complete, exc_callback=self.worker_exc_received)
+        if orientation == Qt.Orientation.Vertical:
+            return super().headerData(section, orientation, role)
+
+    def load_entries(self, entries: list[PasswordEntryData]):
+        self.beginResetModel()
+
+        self._display_data.clear()
+        self._item_data.clear()
+
+        logger.debug("Cleared all model entries")
+
+        for entry in entries:
+            display_data = [entry.entry_name, entry.username, entry.url]
+            self._display_data.append(display_data)
+
+            self._item_data.append(entry)
+
+        logger.debug("Added %d entries to model", len(self._item_data))
+        self.endResetModel()
+    
+    def add_entry(self, entry: PasswordEntryData):
+        display_data = [entry.entry_name, entry.username, entry.url]
+
+        self._item_data.append(entry)
+        self._display_data.append(display_data)
+
+        self.layoutChanged.emit()
+    
+    def delete_entry(self, index: QModelIndex):
+        del self._item_data[index.row()]
+        del self._display_data[index.row()]
+
+        self.layoutChanged.emit()
 
 
 class PasswordsTabController(QObject):
@@ -100,7 +95,6 @@ class PasswordsTabController(QObject):
         self.app_parent = app_parent
 
         self.ui = self.mw_parent.ui
-
         make_worker_thread(database.groups.get_children_of_root, self.setup, self.worker_exc_received)
 
     @Slot(GroupParentData)
@@ -127,18 +121,32 @@ class PasswordEntriesViewController(QObject):
 
         self.ui = self.mw_parent.ui
     
-        self.entries_model = PasswordEntriesModel(parent=self)
-        self.ui.passwordEntriesListView.setModel(self.entries_model)
+        self.entries_model = PasswordEntriesTableModel(parent=self)
+        self.ui.passwordEntriesTableView.setModel(self.entries_model)
 
-        self.ui.passwordEntriesListView.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.ui.passwordEntriesListView.customContextMenuRequested.connect(self.context_menu_event)
+        self.setup()
+        
+    def setup(self):
+        header = self.ui.passwordEntriesTableView.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
+        header.setStretchLastSection(True)
+
+        self.ui.passwordEntriesTableView.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.ui.passwordEntriesTableView.customContextMenuRequested.connect(self.context_menu_event)
     
     @Slot()
     def reload_entries(self, group: GroupParentData):
         self.current_group = group
-        self.entries_model.load_data_for_group(group.group_id)
+        func = partial(database.entries.get_entries_by_group, group.group_id)
 
+        make_worker_thread(func, self.model_reload_entries, self.pw_parent.worker_exc_received)
         logger.info("Reloading entries for group '%s'", group.group_name)
+    
+    @Slot()
+    def model_reload_entries(self, entries: list[PasswordEntryData]):
+        logger.info("Fetched %d entries", len(entries))
+        self.entries_model.load_entries(entries)
     
     @Slot()
     def context_menu_event(self, pos):
@@ -157,8 +165,9 @@ class PasswordEntriesViewController(QObject):
         context.addAction(add_entry_action)
 
         # Item-dependent triggers
-        indexes = self.ui.passwordEntriesListView.selectedIndexes()
+        indexes = self.ui.passwordEntriesTableView.selectedIndexes()
         if indexes:
+            # Get only the first index, because the QTableView uses the SelectRows behavior
             index = indexes[0]
             current_item: PasswordEntryData = self.entries_model.data(index, Qt.ItemDataRole.UserRole)
 
@@ -168,7 +177,7 @@ class PasswordEntriesViewController(QObject):
         if indexes:
             context.addAction(remove_entry_action)
         
-        context.exec(self.ui.passwordEntriesListView.mapToGlobal(pos))
+        context.exec(self.ui.passwordEntriesTableView.mapToGlobal(pos))
 
     @Slot()
     def add_password_entry(self):
@@ -176,17 +185,44 @@ class PasswordEntriesViewController(QObject):
 
         @Slot(AddPasswordEntry)
         def dialog_accepted(data: AddPasswordEntry):
-            # TODO: Make this safer, if current_group_id changes it may add to the wrong group
-            self.entries_model.add_entry(self.current_group.group_id, data)
-        
+            func = partial(
+                database.entries.create_entry, self.current_group.group_id,
+                data.entry_name, data.username, data.password, data.url
+            )
+            make_worker_thread(func, self.model_add_password_entry, self.pw_parent.worker_exc_received)
+    
         dialog.dataComplete.connect(dialog_accepted)
         dialog.exec()
 
         dialog.deleteLater()
 
+    @Slot()
+    def model_add_password_entry(self, entry: PasswordEntryData):
+        logger.info("Adding entry '%s'", entry.entry_name)
+        self.entries_model.add_entry(entry)
+    
     def delete_password_entry(self, index: QModelIndex, item: PasswordEntryData):
-        self.entries_model.delete_entry(index, item.entry_id)
-        self.ui.passwordEntriesListView.clearSelection()
+        btn = QMessageBox.information(
+            self.mw_parent,
+            "PasswordManager - Client",
+            f"Do you want to delete entry '{item.entry_name}'?",
+            buttons=QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            defaultButton=QMessageBox.StandardButton.No
+        )
+        if btn == QMessageBox.StandardButton.No:
+            return
+        
+        func = partial(database.entries.delete_entry_by_id, item.entry_id)
+        make_worker_thread(func, self.model_delete_password_entry, self.pw_parent.worker_exc_received)
+
+        self.entries_model.delete_entry(index)
+        self.ui.passwordEntriesTableView.clearSelection()
+
+        logger.info("Deleting entry '%s'", item.entry_name)
+    
+    @Slot()
+    def model_delete_password_entry(self, success: bool):
+        self.ui.statusbar.showMessage("Entry successfully deleted")
 
 
 class PasswordGroupsItemController(QObject):
@@ -207,6 +243,7 @@ class PasswordGroupsItemController(QObject):
         # TODO: Refactor this if needed
         self.root_item: QStandardItem = None
         self._items: dict[uuid.UUID, QStandardItem] = {}
+
         self.setup()
 
     def setup(self):
@@ -237,33 +274,31 @@ class PasswordGroupsItemController(QObject):
         self.ui.passwordGroupsTreeView.expandAll()
         self.ui.passwordGroupsTreeView.resizeColumnToContents(0)
 
-        self.initial_load_groups()
-
-    def initial_load_groups(self):
-        @Slot()
-        def after_get_root_group(root_group: GroupParentData):
-            parentItem = self.groups_model.invisibleRootItem()
-
-            self.root_item = QStandardItem("Root")
-            self.root_item.setEditable(False)
-
-            self.root_item.setData(root_group, Qt.ItemDataRole.UserRole)
-            parentItem.appendRow(self.root_item)
-
-            self._items[root_group.group_id] = self.root_item
-
-            self.groups_model.setHeaderData(0, Qt.Orientation.Horizontal, "Groups")
-            self.load_groups(root_group, parent_item=None)
-
-            self.current_group = root_group
-            self.groupChanged.emit(root_group)
-        
         make_worker_thread(
-            database.groups.get_children_of_root, data_func=after_get_root_group,
-            exc_callback=self.worker_exc_received
+            database.groups.get_children_of_root, self.after_get_root_group,
+            self.worker_exc_received
         )
-        
+
+    @Slot()
+    def after_get_root_group(self, root_group: GroupParentData):
+        parentItem = self.groups_model.invisibleRootItem()
+
+        self.root_item = QStandardItem("Root")
+        self.root_item.setEditable(False)
+
+        self.root_item.setData(root_group, Qt.ItemDataRole.UserRole)
+        parentItem.appendRow(self.root_item)
+
+        self._items[root_group.group_id] = self.root_item
+
+        self.groups_model.setHeaderData(0, Qt.Orientation.Horizontal, "Groups")
+        self.load_groups(root_group, parent_item=None)
+
+        self.current_group = root_group
+        self.groupChanged.emit(root_group)
+    
     def load_groups(self, parent_group: GroupParentData, parent_item: QStandardItem | None = None):
+        """Queries the database, use this in a worker thread."""
         children = database.groups.get_children_of_group(parent_group.group_id)
         parentItem = parent_item or self.root_item
 
@@ -368,7 +403,7 @@ class PasswordGroupsItemController(QObject):
             )
             return
         
-        btn = QMessageBox.warning(
+        btn = QMessageBox.information(
             self.mw_parent,
             "PasswordManager - Client",
             f"Do you want to delete group '{data.group_name}'? This will remove all entries in that group.",

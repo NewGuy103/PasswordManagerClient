@@ -185,12 +185,18 @@
                 <widget class="QWidget" name="passwordEntriesWidget" native="true">
                  <layout class="QVBoxLayout" name="verticalLayout_8">
                   <item>
-                   <widget class="QListView" name="passwordEntriesListView">
+                   <widget class="QTableView" name="passwordEntriesTableView">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
                       <horstretch>0</horstretch>
                       <verstretch>0</verstretch>
                      </sizepolicy>
+                    </property>
+                    <property name="selectionMode">
+                     <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+                    </property>
+                    <property name="selectionBehavior">
+                     <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
                     </property>
                    </widget>
                   </item>
