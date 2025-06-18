@@ -19,10 +19,10 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QComboBox, QFrame,
     QGridLayout, QGroupBox, QHBoxLayout, QHeaderView,
     QLabel, QLineEdit, QListWidget, QListWidgetItem,
-    QMainWindow, QMenu, QMenuBar, QPushButton,
-    QSizePolicy, QSpacerItem, QStackedWidget, QStatusBar,
-    QTabWidget, QTableView, QTreeView, QVBoxLayout,
-    QWidget)
+    QMainWindow, QMenu, QMenuBar, QPlainTextEdit,
+    QPushButton, QSizePolicy, QSpacerItem, QStackedWidget,
+    QStatusBar, QTabWidget, QTableView, QTreeView,
+    QVBoxLayout, QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -144,8 +144,11 @@ class Ui_MainWindow(object):
         self.verticalLayout_8.setObjectName(u"verticalLayout_8")
         self.passwordEntriesTableView = QTableView(self.passwordEntriesWidget)
         self.passwordEntriesTableView.setObjectName(u"passwordEntriesTableView")
-        sizePolicy1.setHeightForWidth(self.passwordEntriesTableView.sizePolicy().hasHeightForWidth())
-        self.passwordEntriesTableView.setSizePolicy(sizePolicy1)
+        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        sizePolicy4.setHorizontalStretch(0)
+        sizePolicy4.setVerticalStretch(0)
+        sizePolicy4.setHeightForWidth(self.passwordEntriesTableView.sizePolicy().hasHeightForWidth())
+        self.passwordEntriesTableView.setSizePolicy(sizePolicy4)
         self.passwordEntriesTableView.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.passwordEntriesTableView.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
 
@@ -153,13 +156,156 @@ class Ui_MainWindow(object):
 
         self.passwordEntryInfoFrame = QFrame(self.passwordEntriesWidget)
         self.passwordEntryInfoFrame.setObjectName(u"passwordEntryInfoFrame")
-        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
-        sizePolicy4.setHorizontalStretch(0)
-        sizePolicy4.setVerticalStretch(0)
-        sizePolicy4.setHeightForWidth(self.passwordEntryInfoFrame.sizePolicy().hasHeightForWidth())
-        self.passwordEntryInfoFrame.setSizePolicy(sizePolicy4)
+        sizePolicy.setHeightForWidth(self.passwordEntryInfoFrame.sizePolicy().hasHeightForWidth())
+        self.passwordEntryInfoFrame.setSizePolicy(sizePolicy)
         self.passwordEntryInfoFrame.setFrameShape(QFrame.Shape.StyledPanel)
         self.passwordEntryInfoFrame.setFrameShadow(QFrame.Shadow.Raised)
+        self.horizontalLayout_6 = QHBoxLayout(self.passwordEntryInfoFrame)
+        self.horizontalLayout_6.setObjectName(u"horizontalLayout_6")
+        self.passwordEntryInfoWidget1 = QWidget(self.passwordEntryInfoFrame)
+        self.passwordEntryInfoWidget1.setObjectName(u"passwordEntryInfoWidget1")
+        self.horizontalLayout_7 = QHBoxLayout(self.passwordEntryInfoWidget1)
+        self.horizontalLayout_7.setObjectName(u"horizontalLayout_7")
+        self.entryLabelsWidget = QWidget(self.passwordEntryInfoWidget1)
+        self.entryLabelsWidget.setObjectName(u"entryLabelsWidget")
+        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
+        sizePolicy5.setHorizontalStretch(0)
+        sizePolicy5.setVerticalStretch(0)
+        sizePolicy5.setHeightForWidth(self.entryLabelsWidget.sizePolicy().hasHeightForWidth())
+        self.entryLabelsWidget.setSizePolicy(sizePolicy5)
+        self.gridLayout = QGridLayout(self.entryLabelsWidget)
+        self.gridLayout.setObjectName(u"gridLayout")
+        self.gridLayout.setVerticalSpacing(12)
+        self.entryUsernameLabel = QLabel(self.entryLabelsWidget)
+        self.entryUsernameLabel.setObjectName(u"entryUsernameLabel")
+        sizePolicy.setHeightForWidth(self.entryUsernameLabel.sizePolicy().hasHeightForWidth())
+        self.entryUsernameLabel.setSizePolicy(sizePolicy)
+        self.entryUsernameLabel.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.gridLayout.addWidget(self.entryUsernameLabel, 0, 0, 1, 1)
+
+        self.entryPasswordLabel = QLabel(self.entryLabelsWidget)
+        self.entryPasswordLabel.setObjectName(u"entryPasswordLabel")
+        sizePolicy.setHeightForWidth(self.entryPasswordLabel.sizePolicy().hasHeightForWidth())
+        self.entryPasswordLabel.setSizePolicy(sizePolicy)
+        self.entryPasswordLabel.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.gridLayout.addWidget(self.entryPasswordLabel, 1, 0, 1, 1)
+
+        self.entryNotesLabel = QLabel(self.entryLabelsWidget)
+        self.entryNotesLabel.setObjectName(u"entryNotesLabel")
+        self.entryNotesLabel.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTop|Qt.AlignmentFlag.AlignTrailing)
+
+        self.gridLayout.addWidget(self.entryNotesLabel, 2, 0, 1, 1)
+
+
+        self.horizontalLayout_7.addWidget(self.entryLabelsWidget)
+
+        self.entryDataWidget = QWidget(self.passwordEntryInfoWidget1)
+        self.entryDataWidget.setObjectName(u"entryDataWidget")
+        self.gridLayout_2 = QGridLayout(self.entryDataWidget)
+        self.gridLayout_2.setObjectName(u"gridLayout_2")
+        self.entryUsernameDataLabel = QLabel(self.entryDataWidget)
+        self.entryUsernameDataLabel.setObjectName(u"entryUsernameDataLabel")
+        sizePolicy.setHeightForWidth(self.entryUsernameDataLabel.sizePolicy().hasHeightForWidth())
+        self.entryUsernameDataLabel.setSizePolicy(sizePolicy)
+        self.entryUsernameDataLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+
+        self.gridLayout_2.addWidget(self.entryUsernameDataLabel, 0, 0, 1, 1)
+
+        self.entryPasswordWidget = QWidget(self.entryDataWidget)
+        self.entryPasswordWidget.setObjectName(u"entryPasswordWidget")
+        sizePolicy.setHeightForWidth(self.entryPasswordWidget.sizePolicy().hasHeightForWidth())
+        self.entryPasswordWidget.setSizePolicy(sizePolicy)
+        self.horizontalLayout_8 = QHBoxLayout(self.entryPasswordWidget)
+        self.horizontalLayout_8.setObjectName(u"horizontalLayout_8")
+        self.entryPasswordShowHideButton = QPushButton(self.entryPasswordWidget)
+        self.entryPasswordShowHideButton.setObjectName(u"entryPasswordShowHideButton")
+        sizePolicy6 = QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Maximum)
+        sizePolicy6.setHorizontalStretch(0)
+        sizePolicy6.setVerticalStretch(0)
+        sizePolicy6.setHeightForWidth(self.entryPasswordShowHideButton.sizePolicy().hasHeightForWidth())
+        self.entryPasswordShowHideButton.setSizePolicy(sizePolicy6)
+        icon1 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.EditFind))
+        self.entryPasswordShowHideButton.setIcon(icon1)
+
+        self.horizontalLayout_8.addWidget(self.entryPasswordShowHideButton)
+
+        self.entryPasswordDataLabel = QLabel(self.entryPasswordWidget)
+        self.entryPasswordDataLabel.setObjectName(u"entryPasswordDataLabel")
+        self.entryPasswordDataLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+
+        self.horizontalLayout_8.addWidget(self.entryPasswordDataLabel)
+
+
+        self.gridLayout_2.addWidget(self.entryPasswordWidget, 1, 0, 1, 1)
+
+        self.entryNotesPlainTextEdit = QPlainTextEdit(self.entryDataWidget)
+        self.entryNotesPlainTextEdit.setObjectName(u"entryNotesPlainTextEdit")
+        sizePolicy7 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        sizePolicy7.setHorizontalStretch(0)
+        sizePolicy7.setVerticalStretch(0)
+        sizePolicy7.setHeightForWidth(self.entryNotesPlainTextEdit.sizePolicy().hasHeightForWidth())
+        self.entryNotesPlainTextEdit.setSizePolicy(sizePolicy7)
+        self.entryNotesPlainTextEdit.setReadOnly(True)
+        self.entryNotesPlainTextEdit.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+
+        self.gridLayout_2.addWidget(self.entryNotesPlainTextEdit, 3, 0, 1, 1)
+
+
+        self.horizontalLayout_7.addWidget(self.entryDataWidget)
+
+
+        self.horizontalLayout_6.addWidget(self.passwordEntryInfoWidget1)
+
+        self.passwordEntryInfoWidget2 = QWidget(self.passwordEntryInfoFrame)
+        self.passwordEntryInfoWidget2.setObjectName(u"passwordEntryInfoWidget2")
+        self.horizontalLayout_10 = QHBoxLayout(self.passwordEntryInfoWidget2)
+        self.horizontalLayout_10.setObjectName(u"horizontalLayout_10")
+        self.entryLabelsWidget2 = QWidget(self.passwordEntryInfoWidget2)
+        self.entryLabelsWidget2.setObjectName(u"entryLabelsWidget2")
+        sizePolicy5.setHeightForWidth(self.entryLabelsWidget2.sizePolicy().hasHeightForWidth())
+        self.entryLabelsWidget2.setSizePolicy(sizePolicy5)
+        self.gridLayout_3 = QGridLayout(self.entryLabelsWidget2)
+        self.gridLayout_3.setObjectName(u"gridLayout_3")
+        self.gridLayout_3.setVerticalSpacing(12)
+        self.entryURLLabel = QLabel(self.entryLabelsWidget2)
+        self.entryURLLabel.setObjectName(u"entryURLLabel")
+        sizePolicy.setHeightForWidth(self.entryURLLabel.sizePolicy().hasHeightForWidth())
+        self.entryURLLabel.setSizePolicy(sizePolicy)
+        self.entryURLLabel.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.gridLayout_3.addWidget(self.entryURLLabel, 0, 0, 1, 1)
+
+        self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        self.gridLayout_3.addItem(self.verticalSpacer_2, 1, 0, 1, 1)
+
+
+        self.horizontalLayout_10.addWidget(self.entryLabelsWidget2)
+
+        self.entryDataWidget2 = QWidget(self.passwordEntryInfoWidget2)
+        self.entryDataWidget2.setObjectName(u"entryDataWidget2")
+        self.gridLayout_4 = QGridLayout(self.entryDataWidget2)
+        self.gridLayout_4.setObjectName(u"gridLayout_4")
+        self.entryURLDataLabel = QLabel(self.entryDataWidget2)
+        self.entryURLDataLabel.setObjectName(u"entryURLDataLabel")
+        sizePolicy.setHeightForWidth(self.entryURLDataLabel.sizePolicy().hasHeightForWidth())
+        self.entryURLDataLabel.setSizePolicy(sizePolicy)
+        self.entryURLDataLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+
+        self.gridLayout_4.addWidget(self.entryURLDataLabel, 0, 0, 1, 1)
+
+        self.verticalSpacer_3 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        self.gridLayout_4.addItem(self.verticalSpacer_3, 1, 0, 1, 1)
+
+
+        self.horizontalLayout_10.addWidget(self.entryDataWidget2)
+
+
+        self.horizontalLayout_6.addWidget(self.passwordEntryInfoWidget2)
+
 
         self.verticalLayout_8.addWidget(self.passwordEntryInfoFrame)
 
@@ -176,20 +322,17 @@ class Ui_MainWindow(object):
         self.horizontalLayout.setObjectName(u"horizontalLayout")
         self.availableLoginsGroupbox = QGroupBox(self.settingsTab)
         self.availableLoginsGroupbox.setObjectName(u"availableLoginsGroupbox")
-        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
-        sizePolicy5.setHorizontalStretch(0)
-        sizePolicy5.setVerticalStretch(0)
-        sizePolicy5.setHeightForWidth(self.availableLoginsGroupbox.sizePolicy().hasHeightForWidth())
-        self.availableLoginsGroupbox.setSizePolicy(sizePolicy5)
+        sizePolicy8 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
+        sizePolicy8.setHorizontalStretch(0)
+        sizePolicy8.setVerticalStretch(0)
+        sizePolicy8.setHeightForWidth(self.availableLoginsGroupbox.sizePolicy().hasHeightForWidth())
+        self.availableLoginsGroupbox.setSizePolicy(sizePolicy8)
         self.verticalLayout_5 = QVBoxLayout(self.availableLoginsGroupbox)
         self.verticalLayout_5.setObjectName(u"verticalLayout_5")
         self.availableLoginsListWidget = QListWidget(self.availableLoginsGroupbox)
         self.availableLoginsListWidget.setObjectName(u"availableLoginsListWidget")
-        sizePolicy6 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-        sizePolicy6.setHorizontalStretch(0)
-        sizePolicy6.setVerticalStretch(0)
-        sizePolicy6.setHeightForWidth(self.availableLoginsListWidget.sizePolicy().hasHeightForWidth())
-        self.availableLoginsListWidget.setSizePolicy(sizePolicy6)
+        sizePolicy7.setHeightForWidth(self.availableLoginsListWidget.sizePolicy().hasHeightForWidth())
+        self.availableLoginsListWidget.setSizePolicy(sizePolicy7)
 
         self.verticalLayout_5.addWidget(self.availableLoginsListWidget)
 
@@ -201,15 +344,15 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
         self.addAccountButton = QPushButton(self.accountButtonFrame)
         self.addAccountButton.setObjectName(u"addAccountButton")
-        icon1 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ListAdd))
-        self.addAccountButton.setIcon(icon1)
+        icon2 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ListAdd))
+        self.addAccountButton.setIcon(icon2)
 
         self.horizontalLayout_2.addWidget(self.addAccountButton)
 
         self.removeAccountButton = QPushButton(self.accountButtonFrame)
         self.removeAccountButton.setObjectName(u"removeAccountButton")
-        icon2 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ListRemove))
-        self.removeAccountButton.setIcon(icon2)
+        icon3 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ListRemove))
+        self.removeAccountButton.setIcon(icon3)
 
         self.horizontalLayout_2.addWidget(self.removeAccountButton)
 
@@ -221,17 +364,14 @@ class Ui_MainWindow(object):
 
         self.appConfigGroupBox = QGroupBox(self.settingsTab)
         self.appConfigGroupBox.setObjectName(u"appConfigGroupBox")
-        sizePolicy5.setHeightForWidth(self.appConfigGroupBox.sizePolicy().hasHeightForWidth())
-        self.appConfigGroupBox.setSizePolicy(sizePolicy5)
+        sizePolicy8.setHeightForWidth(self.appConfigGroupBox.sizePolicy().hasHeightForWidth())
+        self.appConfigGroupBox.setSizePolicy(sizePolicy8)
         self.verticalLayout_6 = QVBoxLayout(self.appConfigGroupBox)
         self.verticalLayout_6.setObjectName(u"verticalLayout_6")
         self.clientInfoWidget = QWidget(self.appConfigGroupBox)
         self.clientInfoWidget.setObjectName(u"clientInfoWidget")
-        sizePolicy7 = QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Maximum)
-        sizePolicy7.setHorizontalStretch(0)
-        sizePolicy7.setVerticalStretch(0)
-        sizePolicy7.setHeightForWidth(self.clientInfoWidget.sizePolicy().hasHeightForWidth())
-        self.clientInfoWidget.setSizePolicy(sizePolicy7)
+        sizePolicy6.setHeightForWidth(self.clientInfoWidget.sizePolicy().hasHeightForWidth())
+        self.clientInfoWidget.setSizePolicy(sizePolicy6)
         self.gridLayout_10 = QGridLayout(self.clientInfoWidget)
         self.gridLayout_10.setObjectName(u"gridLayout_10")
         self.serverUrlLabel = QLabel(self.clientInfoWidget)
@@ -244,11 +384,8 @@ class Ui_MainWindow(object):
 
         self.clientVersionLabel = QLabel(self.clientInfoWidget)
         self.clientVersionLabel.setObjectName(u"clientVersionLabel")
-        sizePolicy8 = QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
-        sizePolicy8.setHorizontalStretch(0)
-        sizePolicy8.setVerticalStretch(0)
-        sizePolicy8.setHeightForWidth(self.clientVersionLabel.sizePolicy().hasHeightForWidth())
-        self.clientVersionLabel.setSizePolicy(sizePolicy8)
+        sizePolicy5.setHeightForWidth(self.clientVersionLabel.sizePolicy().hasHeightForWidth())
+        self.clientVersionLabel.setSizePolicy(sizePolicy5)
         self.clientVersionLabel.setFont(font1)
         self.clientVersionLabel.setCursor(QCursor(Qt.CursorShape.IBeamCursor))
         self.clientVersionLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
@@ -268,15 +405,15 @@ class Ui_MainWindow(object):
 
         self.logLevelWidget = QWidget(self.appConfigGroupBox)
         self.logLevelWidget.setObjectName(u"logLevelWidget")
-        sizePolicy7.setHeightForWidth(self.logLevelWidget.sizePolicy().hasHeightForWidth())
-        self.logLevelWidget.setSizePolicy(sizePolicy7)
+        sizePolicy6.setHeightForWidth(self.logLevelWidget.sizePolicy().hasHeightForWidth())
+        self.logLevelWidget.setSizePolicy(sizePolicy6)
         self.horizontalLayout_3 = QHBoxLayout(self.logLevelWidget)
         self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
         self.horizontalLayout_3.setContentsMargins(-1, -1, -1, 0)
         self.logLevelLabel = QLabel(self.logLevelWidget)
         self.logLevelLabel.setObjectName(u"logLevelLabel")
-        sizePolicy8.setHeightForWidth(self.logLevelLabel.sizePolicy().hasHeightForWidth())
-        self.logLevelLabel.setSizePolicy(sizePolicy8)
+        sizePolicy5.setHeightForWidth(self.logLevelLabel.sizePolicy().hasHeightForWidth())
+        self.logLevelLabel.setSizePolicy(sizePolicy5)
         self.logLevelLabel.setAlignment(Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
 
         self.horizontalLayout_3.addWidget(self.logLevelLabel)
@@ -288,8 +425,8 @@ class Ui_MainWindow(object):
         self.logLevelComboBox.addItem("")
         self.logLevelComboBox.addItem("")
         self.logLevelComboBox.setObjectName(u"logLevelComboBox")
-        sizePolicy8.setHeightForWidth(self.logLevelComboBox.sizePolicy().hasHeightForWidth())
-        self.logLevelComboBox.setSizePolicy(sizePolicy8)
+        sizePolicy5.setHeightForWidth(self.logLevelComboBox.sizePolicy().hasHeightForWidth())
+        self.logLevelComboBox.setSizePolicy(sizePolicy5)
 
         self.horizontalLayout_3.addWidget(self.logLevelComboBox)
 
@@ -298,8 +435,8 @@ class Ui_MainWindow(object):
 
         self.logFileWidget = QWidget(self.appConfigGroupBox)
         self.logFileWidget.setObjectName(u"logFileWidget")
-        sizePolicy8.setHeightForWidth(self.logFileWidget.sizePolicy().hasHeightForWidth())
-        self.logFileWidget.setSizePolicy(sizePolicy8)
+        sizePolicy5.setHeightForWidth(self.logFileWidget.sizePolicy().hasHeightForWidth())
+        self.logFileWidget.setSizePolicy(sizePolicy5)
         self.horizontalLayout_4 = QHBoxLayout(self.logFileWidget)
         self.horizontalLayout_4.setObjectName(u"horizontalLayout_4")
         self.horizontalLayout_4.setContentsMargins(-1, 0, -1, -1)
@@ -358,6 +495,13 @@ class Ui_MainWindow(object):
         self.usernameLineEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Enter username", None))
         self.passwordLineEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Enter password", None))
         self.loginButton.setText(QCoreApplication.translate("MainWindow", u"Login", None))
+        self.entryUsernameLabel.setText(QCoreApplication.translate("MainWindow", u"Username:", None))
+        self.entryPasswordLabel.setText(QCoreApplication.translate("MainWindow", u"Password:", None))
+        self.entryNotesLabel.setText(QCoreApplication.translate("MainWindow", u"Notes:", None))
+        self.entryUsernameDataLabel.setText("")
+        self.entryPasswordDataLabel.setText("")
+        self.entryURLLabel.setText(QCoreApplication.translate("MainWindow", u"URL:", None))
+        self.entryURLDataLabel.setText("")
         self.appTabWidget.setTabText(self.appTabWidget.indexOf(self.passwordsTab), QCoreApplication.translate("MainWindow", u"Passwords", None))
         self.availableLoginsGroupbox.setTitle(QCoreApplication.translate("MainWindow", u"Available Logins", None))
         self.addAccountButton.setText(QCoreApplication.translate("MainWindow", u"Add Login", None))

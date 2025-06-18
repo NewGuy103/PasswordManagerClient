@@ -1,8 +1,5 @@
 import logging
-import secrets
-import typing
 import uuid
-from datetime import datetime, timezone
 
 from sqlalchemy import Engine
 from sqlmodel import Session, SQLModel, create_engine, select, text, true
@@ -15,15 +12,12 @@ logger: logging.Logger = logging.getLogger("passwordmanager-client")
 DEFAULT_CHUNK_SIZE: int = 25 * 1024 * 1024  # 25 MiB
 
 
-AsyncSession = str
-GroupPublicGet = str
-
 class MainDatabase:
     """Main database class. This is a local version of the server database."""
     def __init__(self):
         self.engine: Engine = None
 
-    def setup(self):
+    def setup(self) -> None:
         """Sets up the database and runs first-run checks.
         
         This must be called first before using the child methods.
@@ -40,10 +34,12 @@ class MainDatabase:
 
         with Session(self.engine) as session:
             session.exec(text("PRAGMA foreign_keys=ON;"))
+        
         self.groups = PasswordGroupMethods(self)
         self.entries = PasswordEntryMethods(self)
 
         self.groups.create_group('Root', parent_id=None)
+        return
 
     def close(self):
         self.engine.dispose()
@@ -171,9 +167,10 @@ class PasswordEntryMethods:
 
     def create_entry(
         self, group_id: uuid.UUID,
-        entry_name: str, username: str,
-        password: str, url: str
-    ):
+        title: str, username: str,
+        password: str, url: str,
+        notes: str
+    ) -> PasswordEntryData:
         with Session(self.engine) as session:
             result = session.exec(
                 select(PasswordGroups)
@@ -183,16 +180,18 @@ class PasswordEntryMethods:
             
             # TODO: Encrypt password entries so its safer in the database
             new_entry = PasswordEntry(
-                entry_name=entry_name, entry_username=username,
-                entry_password=password, entry_url=url,
-                group_id=group.group_id
+                title=title, username=username,
+                password=password, url=url,
+                notes=notes, group_id=group.group_id
             )
             session.add(new_entry)
 
             entry_public = PasswordEntryData(
-                entry_name=entry_name, username=username,
+                title=title, username=username,
                 password=password, url=url,
-                entry_id=new_entry.entry_id
+                created_at=new_entry.created_at,
+                notes=notes, entry_id=new_entry.entry_id,
+                group_id=group.group_id
             )
             session.commit()
         
@@ -221,14 +220,17 @@ class PasswordEntryMethods:
             entries_public: list[PasswordEntryData] = []
             for entry, group in entries:
                 entry_public = PasswordEntryData(
-                    entry_name=entry.entry_name,
-                    username=entry.entry_username,
+                    title=entry.title,
+                    username=entry.username,
 
-                    password=entry.entry_password,
-                    url=entry.entry_url,
+                    password=entry.password,
+                    url=entry.url,
+
+                    created_at=entry.created_at,
+                    notes=entry.notes,
 
                     entry_id=entry.entry_id,
-                    # group_id=group.group_id
+                    group_id=group.group_id
                 )
                 entries_public.append(entry_public)
             

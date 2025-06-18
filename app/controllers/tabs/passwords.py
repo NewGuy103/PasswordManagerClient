@@ -1,11 +1,14 @@
 import logging
 import typing
 import uuid
+
+from datetime import datetime
 from functools import partial
 
+from pydantic import TypeAdapter, AnyUrl, ValidationError
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QObject, Qt, Signal, Slot
 from PySide6.QtGui import QAction, QIcon, QStandardItem, QStandardItemModel
-from PySide6.QtWidgets import QDialog, QHeaderView, QMenu, QMessageBox
+from PySide6.QtWidgets import QDialog, QHeaderView, QMenu, QMessageBox, QDialogButtonBox
 
 from ...localdb.database import database
 from ...models import AddPasswordEntry, AddPasswordGroup, GroupParentData, PasswordEntryData
@@ -21,14 +24,14 @@ logger: logging.Logger = logging.getLogger("passwordmanager-client")
 
 
 class PasswordEntriesTableModel(QAbstractTableModel):
-    def __init__(self, /, parent: 'PasswordEntriesViewController' = None):
+    def __init__(self, /, parent: 'PasswordEntriesController' = None):
         super().__init__(parent)
         self.pw_ctrl = parent
 
-        self._display_data: list[list[str]] = []
+        self._display_data: list[list[str | datetime]] = []
         self._item_data: list[PasswordEntryData] = []
 
-        self._col_headers: list[str] = ['Entry Name', 'Username', 'URL']
+        self._col_headers: list[str] = ['Title', 'Username', 'URL', 'Created At']
     
     def rowCount(self, /, parent=QModelIndex()):
         return len(self._item_data)
@@ -41,7 +44,11 @@ class PasswordEntriesTableModel(QAbstractTableModel):
             return self._item_data[index.row()]
         
         if role == Qt.ItemDataRole.DisplayRole:
-            return self._display_data[index.row()][index.column()]
+            value = self._display_data[index.row()][index.column()]
+            if isinstance(value, datetime):
+                return value.strftime("%x %X")
+            
+            return value
         
         return None
     
@@ -64,7 +71,7 @@ class PasswordEntriesTableModel(QAbstractTableModel):
         logger.debug("Cleared all model entries")
 
         for entry in entries:
-            display_data = [entry.entry_name, entry.username, entry.url]
+            display_data = [entry.title, entry.username, entry.url, entry.created_at]
             self._display_data.append(display_data)
 
             self._item_data.append(entry)
@@ -73,7 +80,7 @@ class PasswordEntriesTableModel(QAbstractTableModel):
         self.endResetModel()
     
     def add_entry(self, entry: PasswordEntryData):
-        display_data = [entry.entry_name, entry.username, entry.url]
+        display_data = [entry.title, entry.username, entry.url, entry.created_at]
 
         self._item_data.append(entry)
         self._display_data.append(display_data)
@@ -102,17 +109,22 @@ class PasswordsTabController(QObject):
         self.current_group = data
 
         # Controllers
-        self.entries_view_ctrl = PasswordEntriesViewController(self)
-        self.groups_view_ctrl = PasswordGroupsItemController(self)
+        self.entries_ctrl = PasswordEntriesController(self)
+        self.groups_ctrl = PasswordGroupsItemController(self)
 
-        self.groups_view_ctrl.groupChanged.connect(self.entries_view_ctrl.reload_entries)
+        self.entry_info_ctrl = PasswordEntryInfoController(self)
+        self.groups_ctrl.groupChanged.connect(self.entries_ctrl.reload_entries)
+        
+        self.entries_ctrl.entryChanged.connect(self.entry_info_ctrl.entry_changed)
 
     @Slot(Exception)
     def worker_exc_received(self, exc: Exception):
         logger.error("Exception when running worker:", exc_info=exc)
 
 
-class PasswordEntriesViewController(QObject):
+class PasswordEntriesController(QObject):
+    entryChanged = Signal(PasswordEntryData)
+
     def __init__(self, pw_parent: PasswordsTabController):
         super().__init__(pw_parent)
 
@@ -134,6 +146,13 @@ class PasswordEntriesViewController(QObject):
 
         self.ui.passwordEntriesTableView.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.ui.passwordEntriesTableView.customContextMenuRequested.connect(self.context_menu_event)
+
+        self.ui.passwordEntriesTableView.clicked.connect(self.tableview_clicked)
+    
+    @Slot()
+    def tableview_clicked(self, index: QModelIndex):
+        data: PasswordEntryData = index.data(Qt.ItemDataRole.UserRole)
+        self.entryChanged.emit(data)
     
     @Slot()
     def reload_entries(self, group: GroupParentData):
@@ -187,7 +206,8 @@ class PasswordEntriesViewController(QObject):
         def dialog_accepted(data: AddPasswordEntry):
             func = partial(
                 database.entries.create_entry, self.current_group.group_id,
-                data.entry_name, data.username, data.password, data.url
+                data.title, data.username, data.password, data.url,
+                data.notes
             )
             make_worker_thread(func, self.model_add_password_entry, self.pw_parent.worker_exc_received)
     
@@ -198,14 +218,14 @@ class PasswordEntriesViewController(QObject):
 
     @Slot()
     def model_add_password_entry(self, entry: PasswordEntryData):
-        logger.info("Adding entry '%s'", entry.entry_name)
+        logger.info("Adding entry '%s'", entry.title)
         self.entries_model.add_entry(entry)
     
     def delete_password_entry(self, index: QModelIndex, item: PasswordEntryData):
         btn = QMessageBox.information(
             self.mw_parent,
             "PasswordManager - Client",
-            f"Do you want to delete entry '{item.entry_name}'?",
+            f"Do you want to delete entry '{item.title}'?",
             buttons=QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             defaultButton=QMessageBox.StandardButton.No
         )
@@ -218,7 +238,7 @@ class PasswordEntriesViewController(QObject):
         self.entries_model.delete_entry(index)
         self.ui.passwordEntriesTableView.clearSelection()
 
-        logger.info("Deleting entry '%s'", item.entry_name)
+        logger.info("Deleting entry '%s'", item.title)
     
     @Slot()
     def model_delete_password_entry(self, success: bool):
@@ -441,32 +461,94 @@ class PasswordGroupsItemController(QObject):
         make_worker_thread(func, delete_complete, self.worker_exc_received)
 
 
+class PasswordEntryInfoController(QObject):
+    def __init__(self, pw_parent: PasswordsTabController):
+        super().__init__(pw_parent)
+
+        self.mw_parent = pw_parent.mw_parent
+        self.pw_parent = pw_parent
+
+        self.ui = self.mw_parent.ui
+        self.ui.entryPasswordShowHideButton.clicked.connect(self.show_hide_clicked)
+
+        self._entry: PasswordEntryData = None
+        self._hidden: bool = True
+    
+    @Slot()
+    def entry_changed(self, entry: PasswordEntryData):
+        logger.debug("Entry changed to '%s', changing info", entry.title)
+        self._entry = entry
+
+        self._hidden = True
+        
+        self.ui.entryUsernameDataLabel.setText(entry.username)
+        self.ui.entryPasswordDataLabel.setText("*****")
+
+        self.ui.entryNotesPlainTextEdit.setPlainText(entry.notes)
+
+        # TODO: Make sure to use str(entry.url) when using an AnyUrl type later on
+        self.ui.entryURLDataLabel.setText(entry.url)
+    
+    @Slot()
+    def show_hide_clicked(self):
+        if not self._entry:
+            return
+        
+        if self._hidden:
+            self._hidden = False
+            self.ui.entryPasswordDataLabel.setText(self._entry.password)
+        else:
+            self._hidden = True
+            self.ui.entryPasswordDataLabel.setText("*****")
+        
+        logger.debug("Hidden: %s", self._hidden)
+
+
 class AddPasswordEntryDialog(QDialog):
     dataComplete = Signal(AddPasswordEntry)
-    def __init__(self, /, parent: PasswordEntriesViewController):
+    def __init__(self, /, parent: PasswordEntriesController):
         super().__init__(parent.mw_parent)
         self.ui = Ui_AddPasswordEntryDialog()
         
         self.pw_parent = parent
         self.ui.setupUi(self)
+
+        self.ui.urlLineEdit.textEdited.connect(self.url_text_edited)
     
     def accept(self):
-        entry_name = self.ui.entryNameLineEdit.text()
+        title = self.ui.titleLineEdit.text()
         username = self.ui.usernameLineEdit.text()
 
         password = self.ui.passwordLineEdit.text()
         url = self.ui.urlLineEdit.text()
 
+        notes = self.ui.notesPlainTextEdit.toPlainText()
+
         data = AddPasswordEntry(
-            entry_name=entry_name,
+            title=title,
             username=username,
             password=password,
-            url=url
+            url=url,
+            notes=notes
         )
 
         self.dataComplete.emit(data)
         return super().accept()
 
+    @Slot()
+    def url_text_edited(self, text: str):
+        ta = TypeAdapter(AnyUrl)
+        btn = self.ui.dialogButtonBox.button(QDialogButtonBox.StandardButton.Ok)
+
+        try:
+            if text:
+                ta.validate_python(text)
+        except ValidationError:
+            btn.setEnabled(False)
+            return
+        
+        btn.setEnabled(True)
+    
 
 # TODO: Add metadata like description, etc
 class AddPasswordGroupDialog(QDialog):
@@ -477,6 +559,9 @@ class AddPasswordGroupDialog(QDialog):
         
         self.pw_parent = parent
         self.ui.setupUi(self)
+
+        self.ui.groupNameLineEdit.textEdited.connect(self.groupname_text_edited)
+        self.ui.dialogButtonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(False)
     
     def accept(self):
         group_name = self.ui.groupNameLineEdit.text()
@@ -486,3 +571,12 @@ class AddPasswordGroupDialog(QDialog):
 
         self.dataComplete.emit(data)
         return super().accept()
+
+    @Slot()
+    def groupname_text_edited(self, text: str):
+        btn = self.ui.dialogButtonBox.button(QDialogButtonBox.StandardButton.Ok)
+
+        if not text:
+            btn.setEnabled(False)
+        else:
+            btn.setEnabled(True)

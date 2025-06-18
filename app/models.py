@@ -1,25 +1,30 @@
 import uuid
 
-from pydantic import BaseModel
+from datetime import datetime, timezone
+from pydantic import BaseModel, AwareDatetime
 
 
 # State models
 class PasswordEntryBase(BaseModel):
-    entry_name: str
+    """Base for password entries."""
+    title: str
     username: str
 
     password: str
     url: str
 
+    notes: str
+
 
 class AddPasswordEntry(PasswordEntryBase):
+    """Add password entry dialog."""
     pass
 
 
 class PasswordEntryData(PasswordEntryBase):
     entry_id: uuid.UUID
-    # group_id: uuid.UUID
-    pass
+    group_id: uuid.UUID
+    created_at: AwareDatetime = datetime.now(timezone.utc)
 
 
 # TODO: Extend this when adding metadata

@@ -3,11 +3,13 @@ import traceback
 import webbrowser
 
 from PySide6.QtGui import QCloseEvent
+from PySide6.QtCore import Slot, QTimer
 from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox
 
 from .config import AppSettings, setup_logger
 from .controllers.apps import AppsController
 from .localdb.database import database
+from .workers import make_worker_thread
 from .ui.main import Ui_MainWindow
 
 
@@ -31,32 +33,46 @@ class MainWindow(QMainWindow):
         try:
             self.app_settings = AppSettings()
         except Exception as exc:
-            self.config_load_failed(exc)
+            tb: str = ''.join(traceback.format_exception(exc, limit=1))
+
+            QMessageBox.critical(
+                self, 'PasswordManager - Client',
+                f"Could not load configuration, exiting.\nTraceback:\n\n{tb}"
+            )
+
+            self.close()
 
     def setup_config(self):
         try:
             self.app_settings = AppSettings()
         except Exception as exc:
-            self.config_load_failed(exc)
+            tb: str = ''.join(traceback.format_exception(exc, limit=1))
+
+            QMessageBox.critical(
+                self, 'PasswordManager - Client',
+                f"Could not load configuration, exiting.\nTraceback:\n\n{tb}"
+            )
+
+            QTimer.singleShot(0, self.close)
             return
         
-        self.config_loaded()
+        setup_logger(self.app_settings.log_level)
+        make_worker_thread(database.setup, self.app_loaded, self.app_load_failed)
 
-    def config_loaded(self):
-        setup_logger(self.app_settings.log_level)        
-        database.setup()
-
+    @Slot()
+    def app_loaded(self):
         self.app_ctrl = AppsController(self)
-
-    def config_load_failed(self, exc: Exception):
+    
+    @Slot(Exception)
+    def app_load_failed(self, exc: Exception):
         tb: str = ''.join(traceback.format_exception(exc, limit=1))
 
         QMessageBox.critical(
-            self,
-            'PasswordManager - Client',
-            f"Could not load configuration, exiting.\nTraceback:\n\n{tb}"
+            self, 'PasswordManager - Client',
+            f"Local database could not be loaded, exiting.\nTraceback:\n\n{tb}"
         )
-        self.close()
+
+        QTimer.singleShot(0, self.close)
     
     def closeEvent(self, event: QCloseEvent):
         event.accept()
