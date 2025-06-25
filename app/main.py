@@ -3,13 +3,11 @@ import traceback
 import webbrowser
 
 from PySide6.QtGui import QCloseEvent
-from PySide6.QtCore import Slot, QTimer
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox
 
 from .config import AppSettings, setup_logger
 from .controllers.apps import AppsController
-from .localdb.database import database
-from .workers import make_worker_thread
 from .ui.main import Ui_MainWindow
 
 
@@ -57,24 +55,12 @@ class MainWindow(QMainWindow):
             return
         
         setup_logger(self.app_settings.log_level)
-        make_worker_thread(database.setup, self.app_loaded, self.app_load_failed)
-
-    @Slot()
-    def app_loaded(self):
         self.app_ctrl = AppsController(self)
     
-    @Slot(Exception)
-    def app_load_failed(self, exc: Exception):
-        tb: str = ''.join(traceback.format_exception(exc, limit=1))
-
-        QMessageBox.critical(
-            self, 'PasswordManager - Client',
-            f"Local database could not be loaded, exiting.\nTraceback:\n\n{tb}"
-        )
-
-        QTimer.singleShot(0, self.close)
-    
     def closeEvent(self, event: QCloseEvent):
+        if self.app_ctrl.pw_tab.db is not None:
+            self.app_ctrl.pw_tab.db.close()
+
         event.accept()
         return super().closeEvent(event)
 

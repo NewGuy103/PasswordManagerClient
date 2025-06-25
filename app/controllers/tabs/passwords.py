@@ -2,6 +2,7 @@ import logging
 import typing
 import uuid
 
+from pathlib import Path
 from datetime import datetime
 from functools import partial
 
@@ -10,7 +11,7 @@ from PySide6.QtCore import QAbstractTableModel, QModelIndex, QObject, Qt, Signal
 from PySide6.QtGui import QAction, QIcon, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import QDialog, QHeaderView, QMenu, QMessageBox, QDialogButtonBox
 
-from ...localdb.database import database
+from ...localdb.database import MainDatabase
 from ...models import AddPasswordEntry, AddPasswordGroup, GroupParentData, PasswordEntryData
 from ...ui.add_password_entry_dialog import Ui_AddPasswordEntryDialog
 from ...ui.add_password_group_dialog import Ui_AddPasswordGroupDialog
@@ -102,10 +103,29 @@ class PasswordsTabController(QObject):
         self.app_parent = app_parent
 
         self.ui = self.mw_parent.ui
-        make_worker_thread(database.groups.get_children_of_root, self.setup, self.worker_exc_received)
+        self.db: MainDatabase = None
+    
+    @Slot(Path)
+    def database_chosen(self, sqlite_path: Path):
+        self.db = MainDatabase()
+        make_worker_thread(lambda: self.db.setup(sqlite_path), self.database_after_setup, self.worker_exc_received)
+
+        self.ui.statusbar.showMessage('Passwords - Setting up database', timeout=5000)
+
+    @Slot(None)
+    def database_after_setup(self):
+        make_worker_thread(
+            self.db.groups.get_children_of_root, 
+            self.setup, self.worker_exc_received
+        )
+        self.ui.statusbar.showMessage('Passwords - Loading top-level entries', timeout=5000)
 
     @Slot(GroupParentData)
     def setup(self, data: GroupParentData):
+        self.ui.appTabWidget.setTabEnabled(0, False)  # disable databases tab
+        self.ui.appTabWidget.setTabEnabled(1, True)  # enable passwords
+
+        self.ui.appTabWidget.setCurrentIndex(1)
         self.current_group = data
 
         # Controllers
@@ -116,6 +136,7 @@ class PasswordsTabController(QObject):
         self.groups_ctrl.groupChanged.connect(self.entries_ctrl.reload_entries)
         
         self.entries_ctrl.entryChanged.connect(self.entry_info_ctrl.entry_changed)
+        self.ui.statusbar.showMessage('Passwords - Top-level entries loaded', timeout=5000)
 
     @Slot(Exception)
     def worker_exc_received(self, exc: Exception):
@@ -132,7 +153,8 @@ class PasswordEntriesController(QObject):
         self.pw_parent = pw_parent
 
         self.ui = self.mw_parent.ui
-    
+        self.db = pw_parent.db
+
         self.entries_model = PasswordEntriesTableModel(parent=self)
         self.ui.passwordEntriesTableView.setModel(self.entries_model)
 
@@ -157,15 +179,19 @@ class PasswordEntriesController(QObject):
     @Slot()
     def reload_entries(self, group: GroupParentData):
         self.current_group = group
-        func = partial(database.entries.get_entries_by_group, group.group_id)
+        func = partial(self.db.entries.get_entries_by_group, group.group_id)
 
         make_worker_thread(func, self.model_reload_entries, self.pw_parent.worker_exc_received)
         logger.info("Reloading entries for group '%s'", group.group_name)
+
+        self.ui.statusbar.showMessage(f"Passwords - Reloading entries for group '{group.group_name}'", timeout=5000)
     
     @Slot()
     def model_reload_entries(self, entries: list[PasswordEntryData]):
         logger.info("Fetched %d entries", len(entries))
         self.entries_model.load_entries(entries)
+
+        self.ui.statusbar.showMessage('Passwords - Entries reloaded', timeout=5000)
     
     @Slot()
     def context_menu_event(self, pos):
@@ -205,7 +231,7 @@ class PasswordEntriesController(QObject):
         @Slot(AddPasswordEntry)
         def dialog_accepted(data: AddPasswordEntry):
             func = partial(
-                database.entries.create_entry, self.current_group.group_id,
+                self.db.entries.create_entry, self.current_group.group_id,
                 data.title, data.username, data.password, data.url,
                 data.notes
             )
@@ -219,6 +245,8 @@ class PasswordEntriesController(QObject):
     @Slot()
     def model_add_password_entry(self, entry: PasswordEntryData):
         logger.info("Adding entry '%s'", entry.title)
+        self.ui.statusbar.showMessage(f"Passwords - Adding entry '{entry.title}'", timeout=5000)
+
         self.entries_model.add_entry(entry)
     
     def delete_password_entry(self, index: QModelIndex, item: PasswordEntryData):
@@ -232,17 +260,18 @@ class PasswordEntriesController(QObject):
         if btn == QMessageBox.StandardButton.No:
             return
         
-        func = partial(database.entries.delete_entry_by_id, item.entry_id)
+        func = partial(self.db.entries.delete_entry_by_id, item.entry_id)
         make_worker_thread(func, self.model_delete_password_entry, self.pw_parent.worker_exc_received)
 
         self.entries_model.delete_entry(index)
         self.ui.passwordEntriesTableView.clearSelection()
 
         logger.info("Deleting entry '%s'", item.title)
+        self.ui.statusbar.showMessage(f"Passwords - Deleting entry '{item.title}'", timeout=5000)
     
-    @Slot()
+    @Slot(bool)
     def model_delete_password_entry(self, success: bool):
-        self.ui.statusbar.showMessage("Entry successfully deleted")
+        self.ui.statusbar.showMessage("Passwords - Entry deleted")
 
 
 class PasswordGroupsItemController(QObject):
@@ -255,6 +284,8 @@ class PasswordGroupsItemController(QObject):
         self.pw_parent = pw_parent
 
         self.ui = self.mw_parent.ui
+        self.db = pw_parent.db
+
         self.worker_exc_received = pw_parent.worker_exc_received
 
         self.groups_model = QStandardItemModel(parent=self)
@@ -295,9 +326,10 @@ class PasswordGroupsItemController(QObject):
         self.ui.passwordGroupsTreeView.resizeColumnToContents(0)
 
         make_worker_thread(
-            database.groups.get_children_of_root, self.after_get_root_group,
+            self.db.groups.get_children_of_root, self.after_get_root_group,
             self.worker_exc_received
         )
+        self.ui.statusbar.showMessage("Passwords - Loading top-level and child groups", timeout=5000)
 
     @Slot()
     def after_get_root_group(self, root_group: GroupParentData):
@@ -316,10 +348,12 @@ class PasswordGroupsItemController(QObject):
 
         self.current_group = root_group
         self.groupChanged.emit(root_group)
+
+        self.ui.statusbar.showMessage("Passwords - Loaded top-level and child groups", timeout=5000)
     
     def load_groups(self, parent_group: GroupParentData, parent_item: QStandardItem | None = None):
         """Queries the database, use this in a worker thread."""
-        children = database.groups.get_children_of_group(parent_group.group_id)
+        children = self.db.groups.get_children_of_group(parent_group.group_id)
         parentItem = parent_item or self.root_item
 
         for group in children.child_groups:
@@ -394,7 +428,7 @@ class PasswordGroupsItemController(QObject):
         @Slot(AddPasswordGroup)
         def dialog_accepted(data: AddPasswordGroup):
             func = partial(
-                database.groups.create_group,
+                self.db.groups.create_group,
                 data.group_name, self.current_group.group_id
             )
             make_worker_thread(func, self.add_password_group_complete, self.worker_exc_received)
@@ -434,7 +468,7 @@ class PasswordGroupsItemController(QObject):
             return
         
         func = partial(
-            database.groups.delete_group,
+            self.db.groups.delete_group,
             data.group_id
         )
 

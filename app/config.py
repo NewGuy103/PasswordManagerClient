@@ -14,7 +14,6 @@ logger: logging.Logger = logging.getLogger('passwordmanager-client')
 
 class AppFilePaths(BaseModel):
     log_file: Path = Path(dirs.user_config_dir) / 'client.log'
-    sqlite_file: Path = Path(dirs.user_data_dir) / 'localdb.db'
     config_file: Path = Path(dirs.user_config_dir) / 'config.json'
 
 
@@ -61,6 +60,8 @@ class AppSettings(BaseSettings):
 
     logins: list[AvailableLogins] = []
     log_level: LogLevels = LogLevels.debug.value
+
+    recent_databases: list[Path] = []
 
     @classmethod
     def settings_customise_sources(

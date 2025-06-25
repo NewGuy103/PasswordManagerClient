@@ -1,10 +1,10 @@
 import logging
 import uuid
+from pathlib import Path
 
 from sqlalchemy import Engine
 from sqlmodel import Session, SQLModel, create_engine, select, text, true
 
-from ..config import app_file_paths
 from ..localdb.dbtables import PasswordEntry, PasswordGroups
 from ..models import GroupChildrenData, GroupParentData, PasswordEntryData
 
@@ -17,7 +17,7 @@ class MainDatabase:
     def __init__(self):
         self.engine: Engine = None
 
-    def setup(self) -> None:
+    def setup(self, sqlite_path: Path) -> None:
         """Sets up the database and runs first-run checks.
         
         This must be called first before using the child methods.
@@ -27,9 +27,7 @@ class MainDatabase:
         # Or simply, build the client so that it doesnt depend on the server
         # and the server is more of an integrated sync
 
-        app_file_paths.sqlite_file.parent.mkdir(parents=True, exist_ok=True)
-
-        self.engine = create_engine(f"sqlite:///{app_file_paths.sqlite_file}", echo=False)
+        self.engine = create_engine(f"sqlite:///{sqlite_path}", echo=False)
         SQLModel.metadata.create_all(self.engine)
 
         with Session(self.engine) as session:
@@ -42,7 +40,8 @@ class MainDatabase:
         return
 
     def close(self):
-        self.engine.dispose()
+        if self.engine:
+            self.engine.dispose()
 
 
 class PasswordGroupMethods:
@@ -253,5 +252,3 @@ class PasswordEntryMethods:
             session.commit()
             
         return True
-    
-database: MainDatabase = MainDatabase()

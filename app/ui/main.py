@@ -18,11 +18,11 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QTransform)
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QComboBox, QFrame,
     QGridLayout, QGroupBox, QHBoxLayout, QHeaderView,
-    QLabel, QLineEdit, QListWidget, QListWidgetItem,
-    QMainWindow, QMenu, QMenuBar, QPlainTextEdit,
-    QPushButton, QSizePolicy, QSpacerItem, QStackedWidget,
-    QStatusBar, QTabWidget, QTableView, QTreeView,
-    QVBoxLayout, QWidget)
+    QLabel, QLineEdit, QListView, QListWidget,
+    QListWidgetItem, QMainWindow, QMenu, QMenuBar,
+    QPlainTextEdit, QPushButton, QSizePolicy, QSpacerItem,
+    QStackedWidget, QStatusBar, QTabWidget, QTableView,
+    QTreeView, QVBoxLayout, QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -117,17 +117,96 @@ class Ui_MainWindow(object):
         self.verticalLayout_4.setObjectName(u"verticalLayout_4")
         self.appTabWidget = QTabWidget(self.appPage)
         self.appTabWidget.setObjectName(u"appTabWidget")
+        self.databasesTab = QWidget()
+        self.databasesTab.setObjectName(u"databasesTab")
+        self.horizontalLayout_9 = QHBoxLayout(self.databasesTab)
+        self.horizontalLayout_9.setObjectName(u"horizontalLayout_9")
+        self.databasesTabFrame = QFrame(self.databasesTab)
+        self.databasesTabFrame.setObjectName(u"databasesTabFrame")
+        self.databasesTabFrame.setFrameShape(QFrame.Shape.StyledPanel)
+        self.databasesTabFrame.setFrameShadow(QFrame.Shadow.Raised)
+        self.horizontalLayout_11 = QHBoxLayout(self.databasesTabFrame)
+        self.horizontalLayout_11.setObjectName(u"horizontalLayout_11")
+        self.databasesTabInfoFrame = QFrame(self.databasesTabFrame)
+        self.databasesTabInfoFrame.setObjectName(u"databasesTabInfoFrame")
+        self.databasesTabInfoFrame.setMinimumSize(QSize(450, 400))
+        self.databasesTabInfoFrame.setFrameShape(QFrame.Shape.StyledPanel)
+        self.databasesTabInfoFrame.setFrameShadow(QFrame.Shadow.Raised)
+        self.verticalLayout_9 = QVBoxLayout(self.databasesTabInfoFrame)
+        self.verticalLayout_9.setObjectName(u"verticalLayout_9")
+        self.verticalSpacer_5 = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Maximum)
+
+        self.verticalLayout_9.addItem(self.verticalSpacer_5)
+
+        self.databasesTitleLabel = QLabel(self.databasesTabInfoFrame)
+        self.databasesTitleLabel.setObjectName(u"databasesTitleLabel")
+        sizePolicy.setHeightForWidth(self.databasesTitleLabel.sizePolicy().hasHeightForWidth())
+        self.databasesTitleLabel.setSizePolicy(sizePolicy)
+        font2 = QFont()
+        font2.setPointSize(14)
+        self.databasesTitleLabel.setFont(font2)
+        self.databasesTitleLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.verticalLayout_9.addWidget(self.databasesTitleLabel)
+
+        self.databasesTabButtonsWidget = QWidget(self.databasesTabInfoFrame)
+        self.databasesTabButtonsWidget.setObjectName(u"databasesTabButtonsWidget")
+        sizePolicy.setHeightForWidth(self.databasesTabButtonsWidget.sizePolicy().hasHeightForWidth())
+        self.databasesTabButtonsWidget.setSizePolicy(sizePolicy)
+        self.horizontalLayout_12 = QHBoxLayout(self.databasesTabButtonsWidget)
+        self.horizontalLayout_12.setObjectName(u"horizontalLayout_12")
+        self.databasesNewDatabaseButton = QPushButton(self.databasesTabButtonsWidget)
+        self.databasesNewDatabaseButton.setObjectName(u"databasesNewDatabaseButton")
+        icon1 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.DocumentNew))
+        self.databasesNewDatabaseButton.setIcon(icon1)
+
+        self.horizontalLayout_12.addWidget(self.databasesNewDatabaseButton)
+
+        self.databasesOpenDatabaseButton = QPushButton(self.databasesTabButtonsWidget)
+        self.databasesOpenDatabaseButton.setObjectName(u"databasesOpenDatabaseButton")
+        icon2 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.DocumentOpen))
+        self.databasesOpenDatabaseButton.setIcon(icon2)
+
+        self.horizontalLayout_12.addWidget(self.databasesOpenDatabaseButton)
+
+
+        self.verticalLayout_9.addWidget(self.databasesTabButtonsWidget)
+
+        self.verticalSpacer_4 = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+
+        self.verticalLayout_9.addItem(self.verticalSpacer_4)
+
+        self.databasesRecentlyOpenedLabel = QLabel(self.databasesTabInfoFrame)
+        self.databasesRecentlyOpenedLabel.setObjectName(u"databasesRecentlyOpenedLabel")
+        sizePolicy.setHeightForWidth(self.databasesRecentlyOpenedLabel.sizePolicy().hasHeightForWidth())
+        self.databasesRecentlyOpenedLabel.setSizePolicy(sizePolicy)
+
+        self.verticalLayout_9.addWidget(self.databasesRecentlyOpenedLabel)
+
+        self.recentlyOpenedDatabasesListView = QListView(self.databasesTabInfoFrame)
+        self.recentlyOpenedDatabasesListView.setObjectName(u"recentlyOpenedDatabasesListView")
+
+        self.verticalLayout_9.addWidget(self.recentlyOpenedDatabasesListView)
+
+
+        self.horizontalLayout_11.addWidget(self.databasesTabInfoFrame, 0, Qt.AlignmentFlag.AlignHCenter|Qt.AlignmentFlag.AlignVCenter)
+
+
+        self.horizontalLayout_9.addWidget(self.databasesTabFrame)
+
+        self.appTabWidget.addTab(self.databasesTab, "")
         self.passwordsTab = QWidget()
         self.passwordsTab.setObjectName(u"passwordsTab")
         self.verticalLayout_7 = QVBoxLayout(self.passwordsTab)
         self.verticalLayout_7.setObjectName(u"verticalLayout_7")
-        self.frame = QFrame(self.passwordsTab)
-        self.frame.setObjectName(u"frame")
-        self.frame.setFrameShape(QFrame.Shape.StyledPanel)
-        self.frame.setFrameShadow(QFrame.Shadow.Raised)
-        self.horizontalLayout_5 = QHBoxLayout(self.frame)
+        self.passwordsTabFrame = QFrame(self.passwordsTab)
+        self.passwordsTabFrame.setObjectName(u"passwordsTabFrame")
+        self.passwordsTabFrame.setFrameShape(QFrame.Shape.StyledPanel)
+        self.passwordsTabFrame.setFrameShadow(QFrame.Shadow.Raised)
+        self.horizontalLayout_5 = QHBoxLayout(self.passwordsTabFrame)
         self.horizontalLayout_5.setObjectName(u"horizontalLayout_5")
-        self.passwordGroupsTreeView = QTreeView(self.frame)
+        self.horizontalLayout_5.setContentsMargins(-1, -1, -1, 0)
+        self.passwordGroupsTreeView = QTreeView(self.passwordsTabFrame)
         self.passwordGroupsTreeView.setObjectName(u"passwordGroupsTreeView")
         sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Expanding)
         sizePolicy3.setHorizontalStretch(0)
@@ -138,10 +217,11 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_5.addWidget(self.passwordGroupsTreeView)
 
-        self.passwordEntriesWidget = QWidget(self.frame)
+        self.passwordEntriesWidget = QWidget(self.passwordsTabFrame)
         self.passwordEntriesWidget.setObjectName(u"passwordEntriesWidget")
         self.verticalLayout_8 = QVBoxLayout(self.passwordEntriesWidget)
         self.verticalLayout_8.setObjectName(u"verticalLayout_8")
+        self.verticalLayout_8.setContentsMargins(-1, 0, -1, -1)
         self.passwordEntriesTableView = QTableView(self.passwordEntriesWidget)
         self.passwordEntriesTableView.setObjectName(u"passwordEntriesTableView")
         sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -226,8 +306,8 @@ class Ui_MainWindow(object):
         sizePolicy6.setVerticalStretch(0)
         sizePolicy6.setHeightForWidth(self.entryPasswordShowHideButton.sizePolicy().hasHeightForWidth())
         self.entryPasswordShowHideButton.setSizePolicy(sizePolicy6)
-        icon1 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.EditFind))
-        self.entryPasswordShowHideButton.setIcon(icon1)
+        icon3 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.EditFind))
+        self.entryPasswordShowHideButton.setIcon(icon3)
 
         self.horizontalLayout_8.addWidget(self.entryPasswordShowHideButton)
 
@@ -313,7 +393,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_5.addWidget(self.passwordEntriesWidget)
 
 
-        self.verticalLayout_7.addWidget(self.frame)
+        self.verticalLayout_7.addWidget(self.passwordsTabFrame)
 
         self.appTabWidget.addTab(self.passwordsTab, "")
         self.settingsTab = QWidget()
@@ -344,15 +424,15 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
         self.addAccountButton = QPushButton(self.accountButtonFrame)
         self.addAccountButton.setObjectName(u"addAccountButton")
-        icon2 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ListAdd))
-        self.addAccountButton.setIcon(icon2)
+        icon4 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ListAdd))
+        self.addAccountButton.setIcon(icon4)
 
         self.horizontalLayout_2.addWidget(self.addAccountButton)
 
         self.removeAccountButton = QPushButton(self.accountButtonFrame)
         self.removeAccountButton.setObjectName(u"removeAccountButton")
-        icon3 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ListRemove))
-        self.removeAccountButton.setIcon(icon3)
+        icon5 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ListRemove))
+        self.removeAccountButton.setIcon(icon5)
 
         self.horizontalLayout_2.addWidget(self.removeAccountButton)
 
@@ -495,6 +575,11 @@ class Ui_MainWindow(object):
         self.usernameLineEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Enter username", None))
         self.passwordLineEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Enter password", None))
         self.loginButton.setText(QCoreApplication.translate("MainWindow", u"Login", None))
+        self.databasesTitleLabel.setText(QCoreApplication.translate("MainWindow", u"PasswordManager - Client: {version}", None))
+        self.databasesNewDatabaseButton.setText(QCoreApplication.translate("MainWindow", u"New database", None))
+        self.databasesOpenDatabaseButton.setText(QCoreApplication.translate("MainWindow", u"Open database", None))
+        self.databasesRecentlyOpenedLabel.setText(QCoreApplication.translate("MainWindow", u"Recently opened databases:", None))
+        self.appTabWidget.setTabText(self.appTabWidget.indexOf(self.databasesTab), QCoreApplication.translate("MainWindow", u"Databases", None))
         self.entryUsernameLabel.setText(QCoreApplication.translate("MainWindow", u"Username:", None))
         self.entryPasswordLabel.setText(QCoreApplication.translate("MainWindow", u"Password:", None))
         self.entryNotesLabel.setText(QCoreApplication.translate("MainWindow", u"Notes:", None))
