@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'add_password_entry_dialog.ui'
+## Form generated from reading UI file 'password_entry_info_dialog.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.9.1
 ##
@@ -19,15 +19,15 @@ from PySide6.QtWidgets import (QAbstractButton, QApplication, QDialog, QDialogBu
     QFormLayout, QFrame, QLabel, QLineEdit,
     QPlainTextEdit, QSizePolicy, QVBoxLayout, QWidget)
 
-class Ui_AddPasswordEntryDialog(object):
-    def setupUi(self, AddPasswordEntryDialog):
-        if not AddPasswordEntryDialog.objectName():
-            AddPasswordEntryDialog.setObjectName(u"AddPasswordEntryDialog")
-        AddPasswordEntryDialog.setWindowModality(Qt.WindowModality.WindowModal)
-        AddPasswordEntryDialog.resize(409, 376)
-        self.verticalLayout = QVBoxLayout(AddPasswordEntryDialog)
+class Ui_PasswordEntryInfoDialog(object):
+    def setupUi(self, PasswordEntryInfoDialog):
+        if not PasswordEntryInfoDialog.objectName():
+            PasswordEntryInfoDialog.setObjectName(u"PasswordEntryInfoDialog")
+        PasswordEntryInfoDialog.setWindowModality(Qt.WindowModality.WindowModal)
+        PasswordEntryInfoDialog.resize(409, 376)
+        self.verticalLayout = QVBoxLayout(PasswordEntryInfoDialog)
         self.verticalLayout.setObjectName(u"verticalLayout")
-        self.mainDialogFrame = QFrame(AddPasswordEntryDialog)
+        self.mainDialogFrame = QFrame(PasswordEntryInfoDialog)
         self.mainDialogFrame.setObjectName(u"mainDialogFrame")
         self.mainDialogFrame.setFrameShape(QFrame.Shape.StyledPanel)
         self.mainDialogFrame.setFrameShadow(QFrame.Shadow.Raised)
@@ -92,7 +92,7 @@ class Ui_AddPasswordEntryDialog(object):
 
         self.verticalLayout.addWidget(self.mainDialogFrame)
 
-        self.dialogButtonBox = QDialogButtonBox(AddPasswordEntryDialog)
+        self.dialogButtonBox = QDialogButtonBox(PasswordEntryInfoDialog)
         self.dialogButtonBox.setObjectName(u"dialogButtonBox")
         self.dialogButtonBox.setOrientation(Qt.Orientation.Horizontal)
         self.dialogButtonBox.setStandardButtons(QDialogButtonBox.StandardButton.Cancel|QDialogButtonBox.StandardButton.Ok)
@@ -103,20 +103,20 @@ class Ui_AddPasswordEntryDialog(object):
         QWidget.setTabOrder(self.usernameLineEdit, self.passwordLineEdit)
         QWidget.setTabOrder(self.passwordLineEdit, self.urlLineEdit)
 
-        self.retranslateUi(AddPasswordEntryDialog)
-        self.dialogButtonBox.accepted.connect(AddPasswordEntryDialog.accept)
-        self.dialogButtonBox.rejected.connect(AddPasswordEntryDialog.reject)
+        self.retranslateUi(PasswordEntryInfoDialog)
+        self.dialogButtonBox.accepted.connect(PasswordEntryInfoDialog.accept)
+        self.dialogButtonBox.rejected.connect(PasswordEntryInfoDialog.reject)
 
-        QMetaObject.connectSlotsByName(AddPasswordEntryDialog)
+        QMetaObject.connectSlotsByName(PasswordEntryInfoDialog)
     # setupUi
 
-    def retranslateUi(self, AddPasswordEntryDialog):
-        AddPasswordEntryDialog.setWindowTitle(QCoreApplication.translate("AddPasswordEntryDialog", u"PasswordManager - Add password entry", None))
-        self.titleLabel.setText(QCoreApplication.translate("AddPasswordEntryDialog", u"Title:", None))
-        self.usernameLabel.setText(QCoreApplication.translate("AddPasswordEntryDialog", u"Username:", None))
-        self.passwordLabel.setText(QCoreApplication.translate("AddPasswordEntryDialog", u"Password:", None))
-        self.urlLabel.setText(QCoreApplication.translate("AddPasswordEntryDialog", u"URL:", None))
-        self.urlLineEdit.setPlaceholderText(QCoreApplication.translate("AddPasswordEntryDialog", u"https://example.com", None))
-        self.notesLabel.setText(QCoreApplication.translate("AddPasswordEntryDialog", u"Notes:", None))
+    def retranslateUi(self, PasswordEntryInfoDialog):
+        PasswordEntryInfoDialog.setWindowTitle(QCoreApplication.translate("PasswordEntryInfoDialog", u"PasswordManager - Password entry info", None))
+        self.titleLabel.setText(QCoreApplication.translate("PasswordEntryInfoDialog", u"Title:", None))
+        self.usernameLabel.setText(QCoreApplication.translate("PasswordEntryInfoDialog", u"Username:", None))
+        self.passwordLabel.setText(QCoreApplication.translate("PasswordEntryInfoDialog", u"Password:", None))
+        self.urlLabel.setText(QCoreApplication.translate("PasswordEntryInfoDialog", u"URL:", None))
+        self.urlLineEdit.setPlaceholderText(QCoreApplication.translate("PasswordEntryInfoDialog", u"https://example.com", None))
+        self.notesLabel.setText(QCoreApplication.translate("PasswordEntryInfoDialog", u"Notes:", None))
     # retranslateUi
 

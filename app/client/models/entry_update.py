@@ -4,22 +4,39 @@ from typing import Any, TypeVar
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-T = TypeVar("T", bound="EntryReplaceData")
+
+T = TypeVar("T", bound="EntryUpdate")
 
 
 @_attrs_define
-class EntryReplaceData:
-    entry_data: str
+class EntryUpdate:
+    title: str
+    username: str
+    password: str
+    url: str
+    notes: str
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        entry_data = self.entry_data
+        title = self.title
+
+        username = self.username
+
+        password = self.password
+
+        url = self.url
+
+        notes = self.notes
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
-                "entry_data": entry_data,
+                "title": title,
+                "username": username,
+                "password": password,
+                "url": url,
+                "notes": notes,
             }
         )
 
@@ -28,14 +45,26 @@ class EntryReplaceData:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         d = dict(src_dict)
-        entry_data = d.pop("entry_data")
+        title = d.pop("title")
 
-        entry_replace_data = cls(
-            entry_data=entry_data,
+        username = d.pop("username")
+
+        password = d.pop("password")
+
+        url = d.pop("url")
+
+        notes = d.pop("notes")
+
+        entry_update = cls(
+            title=title,
+            username=username,
+            password=password,
+            url=url,
+            notes=notes,
         )
 
-        entry_replace_data.additional_properties = d
-        return entry_replace_data
+        entry_update.additional_properties = d
+        return entry_update
 
     @property
     def additional_keys(self) -> list[str]:

@@ -2,11 +2,12 @@ import logging
 import uuid
 from pathlib import Path
 
+from pydantic import HttpUrl
 from sqlalchemy import Engine
 from sqlmodel import Session, SQLModel, create_engine, select, text, true
 
-from ..localdb.dbtables import PasswordEntry, PasswordGroups
-from ..models import GroupChildrenData, GroupParentData, PasswordEntryData
+from ..localdb.dbtables import PasswordEntry, PasswordGroups, SyncConfig
+from ..models import GroupChildrenData, GroupParentData, PasswordEntryData, SyncInfo, EditedPasswordEntryInfo
 
 logger: logging.Logger = logging.getLogger("passwordmanager-client")
 DEFAULT_CHUNK_SIZE: int = 25 * 1024 * 1024  # 25 MiB
@@ -23,10 +24,6 @@ class MainDatabase:
         This must be called first before using the child methods.
         """
 
-        # TODO: Add some sort of identifier so i can map local databases to multiple userrs (or non-users)
-        # Or simply, build the client so that it doesnt depend on the server
-        # and the server is more of an integrated sync
-
         self.engine = create_engine(f"sqlite:///{sqlite_path}", echo=False)
         SQLModel.metadata.create_all(self.engine)
 
@@ -36,7 +33,11 @@ class MainDatabase:
         self.groups = PasswordGroupMethods(self)
         self.entries = PasswordEntryMethods(self)
 
+        self.syncinfo = SyncConfigMethods(self)
+
         self.groups.create_group('Root', parent_id=None)
+        self.syncinfo.create_default_info()
+
         return
 
     def close(self):
@@ -166,30 +167,30 @@ class PasswordEntryMethods:
 
     def create_entry(
         self, group_id: uuid.UUID,
-        title: str, username: str,
-        password: str, url: str,
-        notes: str
+        data: EditedPasswordEntryInfo
     ) -> PasswordEntryData:
         with Session(self.engine) as session:
             result = session.exec(
                 select(PasswordGroups)
                 .where(PasswordGroups.group_id == group_id)
             )
+
             group = result.one()
-            
+            url_or_none = str(data.url) if data.url else None
+
             # TODO: Encrypt password entries so its safer in the database
             new_entry = PasswordEntry(
-                title=title, username=username,
-                password=password, url=url,
-                notes=notes, group_id=group.group_id
+                title=data.title, username=data.username,
+                password=data.password, url=url_or_none,
+                notes=data.notes, group_id=group.group_id
             )
             session.add(new_entry)
 
             entry_public = PasswordEntryData(
-                title=title, username=username,
-                password=password, url=url,
+                title=data.title, username=data.username,
+                password=data.password, url=data.url,
                 created_at=new_entry.created_at,
-                notes=notes, entry_id=new_entry.entry_id,
+                notes=data.notes, entry_id=new_entry.entry_id,
                 group_id=group.group_id
             )
             session.commit()
@@ -252,3 +253,88 @@ class PasswordEntryMethods:
             session.commit()
             
         return True
+
+    def update_entry_data(
+        self, entry_id: uuid.UUID,
+        data: EditedPasswordEntryInfo
+    ) -> PasswordEntryData:
+        with Session(self.engine) as session:
+            result = session.exec(
+                select(PasswordEntry)
+                .join(PasswordGroups)
+                .where(
+                    PasswordEntry.entry_id == entry_id
+                )
+            )
+            entry = result.one()
+            url_or_none = str(data.url) if data.url else None
+
+            entry.title = data.title
+            entry.username = data.username
+
+            entry.password = data.password
+            entry.url = url_or_none
+
+            entry.notes = data.notes
+            session.add(entry)
+
+            entry_public = PasswordEntryData(
+                entry_id=entry.entry_id, title=data.title,
+                username=data.username, password=data.password,
+                url=data.url, notes=data.notes,
+                group_id=entry.group.group_id,
+                created_at=entry.created_at
+            )
+            session.commit()
+        
+        return entry_public
+
+
+class SyncConfigMethods:
+    def __init__(self, parent: MainDatabase):
+        self.parent = parent
+        self.engine = parent.engine
+
+    def create_default_info(self):
+        with Session(self.engine) as session:
+            result = session.exec(select(SyncConfig))
+            existing_config = result.one_or_none()
+
+            if existing_config:
+                logger.info("Sync config exists, not creating...")
+                return
+            
+            config = SyncConfig(
+                username='',
+                server_url=None
+            )
+            session.add(config)
+            
+            session.commit()
+
+    def set_sync_info(self, username: str, server_url: HttpUrl | None, sync_enabled: bool):
+        with Session(self.engine) as session:
+            result = session.exec(select(SyncConfig))
+            config = result.one()
+    
+            config.username = username
+            config.server_url = str(server_url) if server_url else None
+
+            session.commit()
+
+            return SyncInfo(
+                username=username,
+                server_url=server_url,
+                sync_enabled=sync_enabled
+            )
+    
+    def get_sync_info(self):
+        with Session(self.engine) as session:
+            result = session.exec(select(SyncConfig))
+            config = result.one()
+
+            return SyncInfo(
+                username=config.username,
+                server_url=config.server_url,
+                sync_enabled=config.sync_enabled
+            )

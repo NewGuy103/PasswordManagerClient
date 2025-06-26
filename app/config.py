@@ -3,7 +3,7 @@ from enum import Enum
 from pathlib import Path
 
 from platformdirs import PlatformDirs
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 from pydantic_settings import BaseSettings, JsonConfigSettingsSource, PydanticBaseSettingsSource, SettingsConfigDict
 
 from .version import __version__
@@ -49,18 +49,10 @@ class LogLevels(int, Enum):
     critical = logging.CRITICAL
 
 
-class AvailableLogins(BaseModel):
-    username: str = ''
-    server_url: HttpUrl = HttpUrl(url='http://localhost:8000')
-    is_default: bool = False
-
-
 class AppSettings(BaseSettings):
     model_config = SettingsConfigDict(json_file=app_file_paths.config_file, validate_assignment=True)
 
-    logins: list[AvailableLogins] = []
     log_level: LogLevels = LogLevels.debug.value
-
     recent_databases: list[Path] = []
 
     @classmethod

@@ -1,15 +1,16 @@
 from http import HTTPStatus
-from typing import Any
+from typing import Any, Optional, Union
 
 import httpx
 
-from ... import errors
 from ...client import AuthenticatedClient, Client
+from ...types import Response
+from ... import errors
+
 from ...models.access_token_error import AccessTokenError
 from ...models.access_token_response import AccessTokenResponse
 from ...models.body_token_login_api_auth_token_post import BodyTokenLoginApiAuthTokenPost
 from ...models.http_validation_error import HTTPValidationError
-from ...types import Response
 
 
 def _get_kwargs(
@@ -23,9 +24,8 @@ def _get_kwargs(
         "url": "/api/auth/token",
     }
 
-    _body = body.to_dict()
+    _kwargs["data"] = body.to_dict()
 
-    _kwargs["data"] = _body
     headers["Content-Type"] = "application/x-www-form-urlencoded"
 
     _kwargs["headers"] = headers
@@ -33,8 +33,8 @@ def _get_kwargs(
 
 
 def _parse_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> AccessTokenError | AccessTokenResponse | HTTPValidationError | None:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Optional[Union[AccessTokenError, AccessTokenResponse, HTTPValidationError]]:
     if response.status_code == 200:
         response_200 = AccessTokenResponse.from_dict(response.json())
 
@@ -58,8 +58,8 @@ def _parse_response(
 
 
 def _build_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Response[AccessTokenError | AccessTokenResponse | HTTPValidationError]:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Response[Union[AccessTokenError, AccessTokenResponse, HTTPValidationError]]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -70,9 +70,9 @@ def _build_response(
 
 def sync_detailed(
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     body: BodyTokenLoginApiAuthTokenPost,
-) -> Response[AccessTokenError | AccessTokenResponse | HTTPValidationError]:
+) -> Response[Union[AccessTokenError, AccessTokenResponse, HTTPValidationError]]:
     """Token Login
 
      OAuth2 token login.
@@ -101,9 +101,9 @@ def sync_detailed(
 
 def sync(
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     body: BodyTokenLoginApiAuthTokenPost,
-) -> AccessTokenError | AccessTokenResponse | HTTPValidationError | None:
+) -> Optional[Union[AccessTokenError, AccessTokenResponse, HTTPValidationError]]:
     """Token Login
 
      OAuth2 token login.
@@ -127,9 +127,9 @@ def sync(
 
 async def asyncio_detailed(
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     body: BodyTokenLoginApiAuthTokenPost,
-) -> Response[AccessTokenError | AccessTokenResponse | HTTPValidationError]:
+) -> Response[Union[AccessTokenError, AccessTokenResponse, HTTPValidationError]]:
     """Token Login
 
      OAuth2 token login.
@@ -156,9 +156,9 @@ async def asyncio_detailed(
 
 async def asyncio(
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     body: BodyTokenLoginApiAuthTokenPost,
-) -> AccessTokenError | AccessTokenResponse | HTTPValidationError | None:
+) -> Optional[Union[AccessTokenError, AccessTokenResponse, HTTPValidationError]]:
     """Token Login
 
      OAuth2 token login.

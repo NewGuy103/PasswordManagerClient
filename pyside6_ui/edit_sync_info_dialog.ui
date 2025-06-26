@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>EditSyncInfoDialog</class>
+ <widget class="QDialog" name="EditSyncInfoDialog">
+  <property name="windowModality">
+   <enum>Qt::WindowModality::WindowModal</enum>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>432</width>
+    <height>327</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>PasswordManager - Client - Edit sync info</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QFrame" name="mainDialogFrame">
+     <property name="frameShape">
+      <enum>QFrame::Shape::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Raised</enum>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
+       <layout class="QFormLayout" name="formLayout">
+        <property name="verticalSpacing">
+         <number>8</number>
+        </property>
+        <item row="0" column="0">
+         <widget class="QLabel" name="serverURLLabel">
+          <property name="text">
+           <string>Server URL:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLineEdit" name="serverURLLineEdit">
+          <property name="toolTip">
+           <string>Server where PasswordManager is running.
+Must be a valid URL or the Test Authorization and Save buttons will be disabled.</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="usernameLabel">
+          <property name="text">
+           <string>Username:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLineEdit" name="usernameLineEdit">
+          <property name="toolTip">
+           <string>Username to login to. Max length of 30 characters.</string>
+          </property>
+          <property name="maxLength">
+           <number>30</number>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="passwordLabel">
+          <property name="text">
+           <string>Password:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLineEdit" name="passwordLineEdit">
+          <property name="toolTip">
+           <string>Password of the user.
+Changing this from an empty field will require a login before saving.</string>
+          </property>
+          <property name="echoMode">
+           <enum>QLineEdit::EchoMode::Password</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="syncEnabledLabel">
+          <property name="text">
+           <string>Sync enabled:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QCheckBox" name="syncEnabledCheckBox"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QPushButton" name="testAuthButton">
+        <property name="text">
+         <string>Test Authorization</string>
+        </property>
+        <property name="icon">
+         <iconset theme="QIcon::ThemeIcon::ViewRefresh"/>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="dialogButtonBox">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Discard|QDialogButtonBox::StandardButton::Save</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>serverURLLineEdit</tabstop>
+  <tabstop>usernameLineEdit</tabstop>
+  <tabstop>passwordLineEdit</tabstop>
+  <tabstop>testAuthButton</tabstop>
+ </tabstops>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>dialogButtonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>EditSyncInfoDialog</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>227</x>
+     <y>308</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>157</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>dialogButtonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>EditSyncInfoDialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>295</x>
+     <y>314</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>286</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

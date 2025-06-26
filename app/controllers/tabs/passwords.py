@@ -1,8 +1,9 @@
 import logging
+import traceback
 import typing
 import uuid
 
-from pathlib import Path
+from enum import StrEnum
 from datetime import datetime
 from functools import partial
 
@@ -12,8 +13,8 @@ from PySide6.QtGui import QAction, QIcon, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import QDialog, QHeaderView, QMenu, QMessageBox, QDialogButtonBox
 
 from ...localdb.database import MainDatabase
-from ...models import AddPasswordEntry, AddPasswordGroup, GroupParentData, PasswordEntryData
-from ...ui.add_password_entry_dialog import Ui_AddPasswordEntryDialog
+from ...models import AddPasswordGroup, GroupParentData, PasswordEntryData, EditedPasswordEntryInfo
+from ...ui.password_entry_info_dialog import Ui_PasswordEntryInfoDialog
 from ...ui.add_password_group_dialog import Ui_AddPasswordGroupDialog
 from ...workers import make_worker_thread
 
@@ -21,7 +22,13 @@ if typing.TYPE_CHECKING:
     from ..apps import AppsController
 
 
+# TODO: Cleanup this module
 logger: logging.Logger = logging.getLogger("passwordmanager-client")
+
+
+class EmitDialogInfoAs(StrEnum):
+    add = 'add'
+    edit = 'edit'
 
 
 class PasswordEntriesTableModel(QAbstractTableModel):
@@ -48,6 +55,13 @@ class PasswordEntriesTableModel(QAbstractTableModel):
             value = self._display_data[index.row()][index.column()]
             if isinstance(value, datetime):
                 return value.strftime("%x %X")
+            
+            if isinstance(value, AnyUrl):
+                return str(value)
+            
+            if value is None:
+                logger.debug("Received 'None' value at cell [%d, %d]", index.row(), index.column())
+                return ''
             
             return value
         
@@ -93,6 +107,21 @@ class PasswordEntriesTableModel(QAbstractTableModel):
         del self._display_data[index.row()]
 
         self.layoutChanged.emit()
+    
+    def update_entry(self, index: QModelIndex, data: PasswordEntryData):
+        if not index.isValid():
+            return
+        
+        display_data = [data.title, data.username, data.url, data.created_at]
+        row = index.row()
+
+        self._item_data[row] = data
+        self._display_data[row] = display_data
+
+        top = self.index(row, 0)
+        bottom = self.index(row, self.columnCount() - 1)
+
+        self.dataChanged.emit(top, bottom)
 
 
 class PasswordsTabController(QObject):
@@ -105,15 +134,9 @@ class PasswordsTabController(QObject):
         self.ui = self.mw_parent.ui
         self.db: MainDatabase = None
     
-    @Slot(Path)
-    def database_chosen(self, sqlite_path: Path):
-        self.db = MainDatabase()
-        make_worker_thread(lambda: self.db.setup(sqlite_path), self.database_after_setup, self.worker_exc_received)
-
-        self.ui.statusbar.showMessage('Passwords - Setting up database', timeout=5000)
-
     @Slot(None)
-    def database_after_setup(self):
+    def database_loaded(self, database: MainDatabase):
+        self.db = database
         make_worker_thread(
             self.db.groups.get_children_of_root, 
             self.setup, self.worker_exc_received
@@ -140,6 +163,15 @@ class PasswordsTabController(QObject):
 
     @Slot(Exception)
     def worker_exc_received(self, exc: Exception):
+        tb: str = ''.join(traceback.format_exception(exc, limit=1))
+
+        QMessageBox.warning(
+            self.mw_parent,
+            "PasswordManager - Client",
+            f"An error occured. Check the log file for more details. Traceback:\n\n{tb}",
+            buttons=QMessageBox.StandardButton.Ok,
+            defaultButton=QMessageBox.StandardButton.Ok
+        )
         logger.error("Exception when running worker:", exc_info=exc)
 
 
@@ -158,6 +190,10 @@ class PasswordEntriesController(QObject):
         self.entries_model = PasswordEntriesTableModel(parent=self)
         self.ui.passwordEntriesTableView.setModel(self.entries_model)
 
+        self.entry_info_dialog = PasswordEntryInfoDialog(self)
+
+        # TODO: Temp-fix, refactor this to be more clean
+        self._entry_needs_update: tuple[QModelIndex, PasswordEntryData] | None = None
         self.setup()
         
     def setup(self):
@@ -170,6 +206,9 @@ class PasswordEntriesController(QObject):
         self.ui.passwordEntriesTableView.customContextMenuRequested.connect(self.context_menu_event)
 
         self.ui.passwordEntriesTableView.clicked.connect(self.tableview_clicked)
+        self.entry_info_dialog.addEntryRequested.connect(self.add_entry_dialog_accepted)
+
+        self.entry_info_dialog.editEntryRequested.connect(self.edit_entry_dialog_accepted)
     
     @Slot()
     def tableview_clicked(self, index: QModelIndex):
@@ -201,9 +240,13 @@ class PasswordEntriesController(QObject):
         list_add_icon = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ListAdd))
         list_remove_icon = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.ListRemove))
 
+        doc_props_icon = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.DocumentProperties))
+
         # Actions
         add_entry_action = QAction("Add entry", self, icon=list_add_icon)
         remove_entry_action = QAction("Remove entry", self, icon=list_remove_icon)
+
+        edit_entry_action = QAction("Edit entry", self, icon=doc_props_icon)
 
         # Triggers
         add_entry_action.triggered.connect(self.add_password_entry)
@@ -217,30 +260,27 @@ class PasswordEntriesController(QObject):
             current_item: PasswordEntryData = self.entries_model.data(index, Qt.ItemDataRole.UserRole)
 
             remove_entry_action.triggered.connect(lambda: self.delete_password_entry(index, current_item))
+            edit_entry_action.triggered.connect(lambda: self.edit_password_entry(index, current_item))
 
         # Item-dependent actions
         if indexes:
             context.addAction(remove_entry_action)
+            context.addAction(edit_entry_action)
         
         context.exec(self.ui.passwordEntriesTableView.mapToGlobal(pos))
 
     @Slot()
     def add_password_entry(self):
-        dialog = AddPasswordEntryDialog(self)
+        self.entry_info_dialog.reset_data(emit_as=EmitDialogInfoAs.add)
+        self.entry_info_dialog.show()
 
-        @Slot(AddPasswordEntry)
-        def dialog_accepted(data: AddPasswordEntry):
-            func = partial(
-                self.db.entries.create_entry, self.current_group.group_id,
-                data.title, data.username, data.password, data.url,
-                data.notes
-            )
-            make_worker_thread(func, self.model_add_password_entry, self.pw_parent.worker_exc_received)
-    
-        dialog.dataComplete.connect(dialog_accepted)
-        dialog.exec()
-
-        dialog.deleteLater()
+    @Slot(EditedPasswordEntryInfo)
+    def add_entry_dialog_accepted(self, data: EditedPasswordEntryInfo):
+        func = partial(
+            self.db.entries.create_entry, self.current_group.group_id,
+            data
+        )
+        make_worker_thread(func, self.model_add_password_entry, self.pw_parent.worker_exc_received)
 
     @Slot()
     def model_add_password_entry(self, entry: PasswordEntryData):
@@ -272,6 +312,35 @@ class PasswordEntriesController(QObject):
     @Slot(bool)
     def model_delete_password_entry(self, success: bool):
         self.ui.statusbar.showMessage("Passwords - Entry deleted")
+
+    def edit_password_entry(self, index: QModelIndex, item: PasswordEntryData):
+        self.entry_info_dialog.reset_data(emit_as=EmitDialogInfoAs.edit)
+        self.entry_info_dialog.set_existing_data(item)
+
+        self._entry_needs_update = (index, item)
+        self.entry_info_dialog.show()
+
+    @Slot(EditedPasswordEntryInfo)
+    def edit_entry_dialog_accepted(self, data: EditedPasswordEntryInfo):
+        # TODO: Tempfix to get it working, clean up to be safer in the case of multiple updated entries
+        assert self._entry_needs_update is not None
+
+        func = partial(
+            self.db.entries.update_entry_data,
+            self._entry_needs_update[1].entry_id, data
+        )
+        make_worker_thread(func, self.model_edit_password_entry, self.pw_parent.worker_exc_received)
+
+    @Slot()
+    def model_edit_password_entry(self, entry: PasswordEntryData):
+        logger.info("Updating entry '%s'", entry.title)
+        self.ui.statusbar.showMessage(f"Passwords - Updating entry '{entry.title}'", timeout=5000)
+
+        # TODO: Tempfix to get it working, clean up to be safer in the case of multiple updated entries
+        assert self._entry_needs_update is not None
+
+        self.entries_model.update_entry(self._entry_needs_update[0], entry)
+        self._entry_needs_update = None
 
 
 class PasswordGroupsItemController(QObject):
@@ -519,9 +588,7 @@ class PasswordEntryInfoController(QObject):
         self.ui.entryPasswordDataLabel.setText("*****")
 
         self.ui.entryNotesPlainTextEdit.setPlainText(entry.notes)
-
-        # TODO: Make sure to use str(entry.url) when using an AnyUrl type later on
-        self.ui.entryURLDataLabel.setText(entry.url)
+        self.ui.entryURLDataLabel.setText(str(entry.url) if entry.url else '')
     
     @Slot()
     def show_hide_clicked(self):
@@ -538,17 +605,40 @@ class PasswordEntryInfoController(QObject):
         logger.debug("Hidden: %s", self._hidden)
 
 
-class AddPasswordEntryDialog(QDialog):
-    dataComplete = Signal(AddPasswordEntry)
+class PasswordEntryInfoDialog(QDialog):
+    addEntryRequested = Signal(EditedPasswordEntryInfo)
+    editEntryRequested = Signal(EditedPasswordEntryInfo)
+
     def __init__(self, /, parent: PasswordEntriesController):
         super().__init__(parent.mw_parent)
-        self.ui = Ui_AddPasswordEntryDialog()
+        self.ui = Ui_PasswordEntryInfoDialog()
         
         self.pw_parent = parent
         self.ui.setupUi(self)
 
+        self._emit_as: EmitDialogInfoAs = None
         self.ui.urlLineEdit.textEdited.connect(self.url_text_edited)
     
+    def reset_data(self, emit_as: EmitDialogInfoAs = EmitDialogInfoAs.add):
+        self._emit_as = emit_as
+        
+        self.ui.titleLineEdit.setText('')
+        self.ui.usernameLineEdit.setText('')
+
+        self.ui.passwordLineEdit.setText('')
+        self.ui.urlLineEdit.setText('')
+
+        self.ui.notesPlainTextEdit.setPlainText('')
+
+    def set_existing_data(self, data: PasswordEntryData):
+        self.ui.titleLineEdit.setText(data.title)
+        self.ui.usernameLineEdit.setText(data.username)
+
+        self.ui.passwordLineEdit.setText(data.password)
+        self.ui.urlLineEdit.setText(str(data.url) if data.url else '')
+
+        self.ui.notesPlainTextEdit.setPlainText(data.notes)
+
     def accept(self):
         title = self.ui.titleLineEdit.text()
         username = self.ui.usernameLineEdit.text()
@@ -558,15 +648,19 @@ class AddPasswordEntryDialog(QDialog):
 
         notes = self.ui.notesPlainTextEdit.toPlainText()
 
-        data = AddPasswordEntry(
+        data = EditedPasswordEntryInfo(
             title=title,
             username=username,
             password=password,
-            url=url,
+            url=url or None,
             notes=notes
         )
 
-        self.dataComplete.emit(data)
+        if self._emit_as == EmitDialogInfoAs.add:
+            self.addEntryRequested.emit(data)
+        elif self._emit_as == EmitDialogInfoAs.edit:
+            self.editEntryRequested.emit(data)
+        
         return super().accept()
 
     @Slot()

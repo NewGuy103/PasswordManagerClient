@@ -1,7 +1,7 @@
 import uuid
 
 from datetime import datetime, timezone
-from pydantic import BaseModel, AwareDatetime
+from pydantic import BaseModel, AwareDatetime, HttpUrl, AnyUrl
 
 
 # State models
@@ -11,13 +11,12 @@ class PasswordEntryBase(BaseModel):
     username: str
 
     password: str
-    url: str
+    url: AnyUrl | None = None
 
     notes: str
 
 
-class AddPasswordEntry(PasswordEntryBase):
-    """Add password entry dialog."""
+class EditedPasswordEntryInfo(PasswordEntryBase):
     pass
 
 
@@ -45,3 +44,24 @@ class GroupParentData(GroupBase):
 # Leave out child_groups intentionally
 class GroupChildrenData(GroupBase):
     parent_id: uuid.UUID
+
+
+# Sync info
+class SyncBase(BaseModel):
+    username: str
+    server_url: HttpUrl | None = None
+
+
+class SyncInfo(SyncBase):
+    sync_enabled: bool = False
+
+
+class TestSyncAuth(SyncBase):
+    server_url: HttpUrl
+    password: str
+
+
+class SaveSyncInfo(SyncBase):
+    server_url: HttpUrl
+    access_token: str
+    sync_enabled: bool

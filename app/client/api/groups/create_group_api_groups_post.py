@@ -1,14 +1,15 @@
 from http import HTTPStatus
-from typing import Any
+from typing import Any, Optional, Union
 
 import httpx
 
-from ... import errors
 from ...client import AuthenticatedClient, Client
+from ...types import Response
+from ... import errors
+
 from ...models.group_create import GroupCreate
 from ...models.group_public_modify import GroupPublicModify
 from ...models.http_validation_error import HTTPValidationError
-from ...types import Response
 
 
 def _get_kwargs(
@@ -22,9 +23,8 @@ def _get_kwargs(
         "url": "/api/groups/",
     }
 
-    _body = body.to_dict()
+    _kwargs["json"] = body.to_dict()
 
-    _kwargs["json"] = _body
     headers["Content-Type"] = "application/json"
 
     _kwargs["headers"] = headers
@@ -32,8 +32,8 @@ def _get_kwargs(
 
 
 def _parse_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> GroupPublicModify | HTTPValidationError | None:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Optional[Union[GroupPublicModify, HTTPValidationError]]:
     if response.status_code == 200:
         response_200 = GroupPublicModify.from_dict(response.json())
 
@@ -49,8 +49,8 @@ def _parse_response(
 
 
 def _build_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Response[GroupPublicModify | HTTPValidationError]:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Response[Union[GroupPublicModify, HTTPValidationError]]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -63,7 +63,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient,
     body: GroupCreate,
-) -> Response[GroupPublicModify | HTTPValidationError]:
+) -> Response[Union[GroupPublicModify, HTTPValidationError]]:
     """Create Group
 
     Args:
@@ -92,7 +92,7 @@ def sync(
     *,
     client: AuthenticatedClient,
     body: GroupCreate,
-) -> GroupPublicModify | HTTPValidationError | None:
+) -> Optional[Union[GroupPublicModify, HTTPValidationError]]:
     """Create Group
 
     Args:
@@ -116,7 +116,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
     body: GroupCreate,
-) -> Response[GroupPublicModify | HTTPValidationError]:
+) -> Response[Union[GroupPublicModify, HTTPValidationError]]:
     """Create Group
 
     Args:
@@ -143,7 +143,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient,
     body: GroupCreate,
-) -> GroupPublicModify | HTTPValidationError | None:
+) -> Optional[Union[GroupPublicModify, HTTPValidationError]]:
     """Create Group
 
     Args:

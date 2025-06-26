@@ -4,6 +4,7 @@ from PySide6.QtCore import QObject
 
 from .tabs.passwords import PasswordsTabController
 from .tabs.databases import DatabasesTabController
+from .tabs.settings import SettingsTabController
 
 if typing.TYPE_CHECKING:
     from ..main import MainWindow
@@ -25,4 +26,7 @@ class AppsController(QObject):
         self.pw_tab = PasswordsTabController(self)
         self.db_tab = DatabasesTabController(self)
 
-        self.db_tab.databaseChosen.connect(self.pw_tab.database_chosen)
+        self.settings_tab = SettingsTabController(self)
+
+        self.db_tab.databaseLoaded.connect(self.settings_tab.database_loaded)
+        self.db_tab.databaseLoaded.connect(self.pw_tab.database_loaded)

@@ -1,12 +1,13 @@
 from http import HTTPStatus
-from typing import Any
+from typing import Any, Optional, Union
 
 import httpx
 
-from ... import errors
 from ...client import AuthenticatedClient, Client
-from ...models.group_public_get import GroupPublicGet
 from ...types import Response
+from ... import errors
+
+from ...models.group_public_get import GroupPublicGet
 
 
 def _get_kwargs() -> dict[str, Any]:
@@ -18,14 +19,11 @@ def _get_kwargs() -> dict[str, Any]:
     return _kwargs
 
 
-def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> list["GroupPublicGet"] | None:
+def _parse_response(
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Optional[GroupPublicGet]:
     if response.status_code == 200:
-        response_200 = []
-        _response_200 = response.json()
-        for response_200_item_data in _response_200:
-            response_200_item = GroupPublicGet.from_dict(response_200_item_data)
-
-            response_200.append(response_200_item)
+        response_200 = GroupPublicGet.from_dict(response.json())
 
         return response_200
     if client.raise_on_unexpected_status:
@@ -35,8 +33,8 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
 
 
 def _build_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Response[list["GroupPublicGet"]]:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Response[GroupPublicGet]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -48,7 +46,7 @@ def _build_response(
 def sync_detailed(
     *,
     client: AuthenticatedClient,
-) -> Response[list["GroupPublicGet"]]:
+) -> Response[GroupPublicGet]:
     """Retrieve Top Level Groups
 
     Raises:
@@ -56,7 +54,7 @@ def sync_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[list['GroupPublicGet']]
+        Response[GroupPublicGet]
     """
 
     kwargs = _get_kwargs()
@@ -71,7 +69,7 @@ def sync_detailed(
 def sync(
     *,
     client: AuthenticatedClient,
-) -> list["GroupPublicGet"] | None:
+) -> Optional[GroupPublicGet]:
     """Retrieve Top Level Groups
 
     Raises:
@@ -79,7 +77,7 @@ def sync(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        list['GroupPublicGet']
+        GroupPublicGet
     """
 
     return sync_detailed(
@@ -90,7 +88,7 @@ def sync(
 async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
-) -> Response[list["GroupPublicGet"]]:
+) -> Response[GroupPublicGet]:
     """Retrieve Top Level Groups
 
     Raises:
@@ -98,7 +96,7 @@ async def asyncio_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[list['GroupPublicGet']]
+        Response[GroupPublicGet]
     """
 
     kwargs = _get_kwargs()
@@ -111,7 +109,7 @@ async def asyncio_detailed(
 async def asyncio(
     *,
     client: AuthenticatedClient,
-) -> list["GroupPublicGet"] | None:
+) -> Optional[GroupPublicGet]:
     """Retrieve Top Level Groups
 
     Raises:
@@ -119,7 +117,7 @@ async def asyncio(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        list['GroupPublicGet']
+        GroupPublicGet
     """
 
     return (

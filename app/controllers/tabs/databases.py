@@ -1,4 +1,5 @@
 import logging
+import traceback
 import typing
 
 from pathlib import Path
@@ -7,6 +8,9 @@ from PySide6.QtCore import QAbstractListModel, QModelIndex, QObject, Qt, Signal,
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 
 from ...version import __version__
+from ...localdb.database import MainDatabase
+from ...workers import make_worker_thread
+
 
 if typing.TYPE_CHECKING:
     from ..apps import AppsController
@@ -53,7 +57,7 @@ class RecentDatabasesListModel(QAbstractListModel):
 
 
 class DatabasesTabController(QObject):
-    databaseChosen = Signal(Path)
+    databaseLoaded = Signal(MainDatabase)
 
     def __init__(self, app_parent: 'AppsController'):
         super().__init__(app_parent)
@@ -83,7 +87,6 @@ class DatabasesTabController(QObject):
             return
         
         path = Path(file_name)
-        self.databaseChosen.emit(path)
 
         settings = self.app_parent.mw_parent.app_settings
 
@@ -94,6 +97,7 @@ class DatabasesTabController(QObject):
         settings.recent_databases.append(path)
         settings.save_settings()
 
+        self._load_database(path)
         self.ui.statusbar.showMessage('Databases - Creating new database', timeout=5000)
     
     @Slot()
@@ -106,7 +110,6 @@ class DatabasesTabController(QObject):
             return
         
         path = Path(file_name)
-        self.databaseChosen.emit(path)
 
         settings = self.app_parent.mw_parent.app_settings
 
@@ -117,6 +120,7 @@ class DatabasesTabController(QObject):
         settings.recent_databases.append(path)
         settings.save_settings()
         
+        self._load_database(path)
         self.ui.statusbar.showMessage('Databases - Opening database', timeout=5000)
 
     @Slot()
@@ -136,5 +140,29 @@ class DatabasesTabController(QObject):
             settings.save_settings()
             return
         
-        self.databaseChosen.emit(item)
+        self._load_database(item)
         self.ui.statusbar.showMessage('Databases - Opening recently used database', timeout=5000)
+
+    @Slot(Exception)
+    def worker_exc_received(self, exc: Exception):
+        tb: str = ''.join(traceback.format_exception(exc, limit=1))
+
+        QMessageBox.warning(
+            self.mw_parent,
+            "PasswordManager - Client",
+            f"Unable to load database. Check the log file for more details. Traceback:\n\n{tb}",
+            buttons=QMessageBox.StandardButton.Ok,
+            defaultButton=QMessageBox.StandardButton.Ok
+        )
+        logger.error("Failed to load database due to exception:", exc_info=exc)
+    
+    def _load_database(self, path: Path):
+        self.db = MainDatabase()
+        make_worker_thread(lambda: self.db.setup(path), self.database_after_setup, self.worker_exc_received)
+
+        self.ui.statusbar.showMessage('Databases - Setting up database', timeout=5000)
+
+    @Slot(None)
+    def database_after_setup(self):
+        self.databaseLoaded.emit(self.db)
+        self.ui.statusbar.showMessage("Databases - Loaded database", timeout=5000)

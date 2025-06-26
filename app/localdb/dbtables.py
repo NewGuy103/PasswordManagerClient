@@ -55,7 +55,7 @@ class PasswordEntry(SQLModel, table=True):
     username: str = Field(nullable=False)
     password: str = Field(nullable=False)  # keep this encrypted
     
-    url: str = Field(nullable=False)
+    url: str | None = Field(default=None, nullable=True)
     notes: str = Field(nullable=False)
 
     created_at: datetime = Field(
@@ -68,3 +68,11 @@ class PasswordEntry(SQLModel, table=True):
         back_populates='entries',
         sa_relationship_kwargs={'lazy': 'selectin'}
     )
+
+
+class SyncConfig(SQLModel, table=True):
+    id: int = Field(primary_key=True)
+    username: str = Field()
+
+    server_url: str | None = Field(default=None, nullable=True)
+    sync_enabled: bool = Field(default=False)

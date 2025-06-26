@@ -4,26 +4,39 @@ from typing import Any, TypeVar
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+
 T = TypeVar("T", bound="EntryCreate")
 
 
 @_attrs_define
 class EntryCreate:
-    entry_name: str
-    entry_data: str
+    title: str
+    username: str
+    password: str
+    url: str
+    notes: str
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        entry_name = self.entry_name
+        title = self.title
 
-        entry_data = self.entry_data
+        username = self.username
+
+        password = self.password
+
+        url = self.url
+
+        notes = self.notes
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
-                "entry_name": entry_name,
-                "entry_data": entry_data,
+                "title": title,
+                "username": username,
+                "password": password,
+                "url": url,
+                "notes": notes,
             }
         )
 
@@ -32,13 +45,22 @@ class EntryCreate:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         d = dict(src_dict)
-        entry_name = d.pop("entry_name")
+        title = d.pop("title")
 
-        entry_data = d.pop("entry_data")
+        username = d.pop("username")
+
+        password = d.pop("password")
+
+        url = d.pop("url")
+
+        notes = d.pop("notes")
 
         entry_create = cls(
-            entry_name=entry_name,
-            entry_data=entry_data,
+            title=title,
+            username=username,
+            password=password,
+            url=url,
+            notes=notes,
         )
 
         entry_create.additional_properties = d

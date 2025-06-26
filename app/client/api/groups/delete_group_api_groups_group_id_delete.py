@@ -1,14 +1,15 @@
 from http import HTTPStatus
-from typing import Any
-from uuid import UUID
+from typing import Any, Optional, Union
 
 import httpx
 
-from ... import errors
 from ...client import AuthenticatedClient, Client
+from ...types import Response
+from ... import errors
+
 from ...models.generic_success import GenericSuccess
 from ...models.http_validation_error import HTTPValidationError
-from ...types import Response
+from uuid import UUID
 
 
 def _get_kwargs(
@@ -16,15 +17,17 @@ def _get_kwargs(
 ) -> dict[str, Any]:
     _kwargs: dict[str, Any] = {
         "method": "delete",
-        "url": f"/api/groups/{group_id}/",
+        "url": "/api/groups/{group_id}/".format(
+            group_id=group_id,
+        ),
     }
 
     return _kwargs
 
 
 def _parse_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> GenericSuccess | HTTPValidationError | None:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Optional[Union[GenericSuccess, HTTPValidationError]]:
     if response.status_code == 200:
         response_200 = GenericSuccess.from_dict(response.json())
 
@@ -40,8 +43,8 @@ def _parse_response(
 
 
 def _build_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Response[GenericSuccess | HTTPValidationError]:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Response[Union[GenericSuccess, HTTPValidationError]]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -54,7 +57,7 @@ def sync_detailed(
     group_id: UUID,
     *,
     client: AuthenticatedClient,
-) -> Response[GenericSuccess | HTTPValidationError]:
+) -> Response[Union[GenericSuccess, HTTPValidationError]]:
     """Delete Group
 
     Args:
@@ -83,7 +86,7 @@ def sync(
     group_id: UUID,
     *,
     client: AuthenticatedClient,
-) -> GenericSuccess | HTTPValidationError | None:
+) -> Optional[Union[GenericSuccess, HTTPValidationError]]:
     """Delete Group
 
     Args:
@@ -107,7 +110,7 @@ async def asyncio_detailed(
     group_id: UUID,
     *,
     client: AuthenticatedClient,
-) -> Response[GenericSuccess | HTTPValidationError]:
+) -> Response[Union[GenericSuccess, HTTPValidationError]]:
     """Delete Group
 
     Args:
@@ -134,7 +137,7 @@ async def asyncio(
     group_id: UUID,
     *,
     client: AuthenticatedClient,
-) -> GenericSuccess | HTTPValidationError | None:
+) -> Optional[Union[GenericSuccess, HTTPValidationError]]:
     """Delete Group
 
     Args:

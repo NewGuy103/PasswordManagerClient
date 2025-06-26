@@ -1,11 +1,11 @@
 from http import HTTPStatus
-from typing import Any, cast
+from typing import Any, Optional, Union, cast
 
 import httpx
 
-from ... import errors
 from ...client import AuthenticatedClient, Client
 from ...types import Response
+from ... import errors
 
 
 def _get_kwargs() -> dict[str, Any]:
@@ -17,7 +17,7 @@ def _get_kwargs() -> dict[str, Any]:
     return _kwargs
 
 
-def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> bool | None:
+def _parse_response(*, client: Union[AuthenticatedClient, Client], response: httpx.Response) -> Optional[bool]:
     if response.status_code == 200:
         response_200 = cast(bool, response.json())
         return response_200
@@ -27,7 +27,7 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
         return None
 
 
-def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[bool]:
+def _build_response(*, client: Union[AuthenticatedClient, Client], response: httpx.Response) -> Response[bool]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -38,7 +38,7 @@ def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Res
 
 def sync_detailed(
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
 ) -> Response[bool]:
     """Health Check
 
@@ -61,8 +61,8 @@ def sync_detailed(
 
 def sync(
     *,
-    client: AuthenticatedClient | Client,
-) -> bool | None:
+    client: Union[AuthenticatedClient, Client],
+) -> Optional[bool]:
     """Health Check
 
     Raises:
@@ -80,7 +80,7 @@ def sync(
 
 async def asyncio_detailed(
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
 ) -> Response[bool]:
     """Health Check
 
@@ -101,8 +101,8 @@ async def asyncio_detailed(
 
 async def asyncio(
     *,
-    client: AuthenticatedClient | Client,
-) -> bool | None:
+    client: Union[AuthenticatedClient, Client],
+) -> Optional[bool]:
     """Health Check
 
     Raises:

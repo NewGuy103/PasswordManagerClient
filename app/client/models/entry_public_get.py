@@ -1,30 +1,39 @@
 from collections.abc import Mapping
 from typing import Any, TypeVar
-from uuid import UUID
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
+
+
+from uuid import UUID
+
 
 T = TypeVar("T", bound="EntryPublicGet")
 
 
 @_attrs_define
 class EntryPublicGet:
-    entry_name: str
-    entry_data: str
+    title: str
+    username: str
+    password: str
+    url: str
+    notes: str
     entry_id: UUID
-    group_name: str
     group_id: UUID
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        entry_name = self.entry_name
+        title = self.title
 
-        entry_data = self.entry_data
+        username = self.username
+
+        password = self.password
+
+        url = self.url
+
+        notes = self.notes
 
         entry_id = str(self.entry_id)
-
-        group_name = self.group_name
 
         group_id = str(self.group_id)
 
@@ -32,10 +41,12 @@ class EntryPublicGet:
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
-                "entry_name": entry_name,
-                "entry_data": entry_data,
+                "title": title,
+                "username": username,
+                "password": password,
+                "url": url,
+                "notes": notes,
                 "entry_id": entry_id,
-                "group_name": group_name,
                 "group_id": group_id,
             }
         )
@@ -45,21 +56,27 @@ class EntryPublicGet:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         d = dict(src_dict)
-        entry_name = d.pop("entry_name")
+        title = d.pop("title")
 
-        entry_data = d.pop("entry_data")
+        username = d.pop("username")
+
+        password = d.pop("password")
+
+        url = d.pop("url")
+
+        notes = d.pop("notes")
 
         entry_id = UUID(d.pop("entry_id"))
-
-        group_name = d.pop("group_name")
 
         group_id = UUID(d.pop("group_id"))
 
         entry_public_get = cls(
-            entry_name=entry_name,
-            entry_data=entry_data,
+            title=title,
+            username=username,
+            password=password,
+            url=url,
+            notes=notes,
             entry_id=entry_id,
-            group_name=group_name,
             group_id=group_id,
         )
 

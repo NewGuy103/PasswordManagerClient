@@ -7,7 +7,7 @@ from .body_revoke_login_token_api_auth_revoke_post import BodyRevokeLoginTokenAp
 from .body_token_login_api_auth_token_post import BodyTokenLoginApiAuthTokenPost
 from .entry_create import EntryCreate
 from .entry_public_get import EntryPublicGet
-from .entry_replace_data import EntryReplaceData
+from .entry_update import EntryUpdate
 from .generic_success import GenericSuccess
 from .group_create import GroupCreate
 from .group_move import GroupMove
@@ -27,7 +27,7 @@ __all__ = (
     "BodyTokenLoginApiAuthTokenPost",
     "EntryCreate",
     "EntryPublicGet",
-    "EntryReplaceData",
+    "EntryUpdate",
     "GenericSuccess",
     "GroupCreate",
     "GroupMove",
