@@ -30,3 +30,6 @@ class AppsController(QObject):
 
         self.db_tab.databaseLoaded.connect(self.settings_tab.database_loaded)
         self.db_tab.databaseLoaded.connect(self.pw_tab.database_loaded)
+
+        self.db_tab.databaseWithSyncLoaded.connect(self.settings_tab.database_loaded)
+        self.db_tab.databaseWithSyncLoaded.connect(self.pw_tab.database_loaded)

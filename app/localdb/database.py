@@ -1,5 +1,7 @@
 import logging
 import uuid
+
+from datetime import datetime, timezone
 from pathlib import Path
 
 from pydantic import HttpUrl
@@ -7,7 +9,10 @@ from sqlalchemy import Engine
 from sqlmodel import Session, SQLModel, create_engine, select, text, true
 
 from ..localdb.dbtables import PasswordEntry, PasswordGroups, SyncConfig
-from ..models import GroupChildrenData, GroupParentData, PasswordEntryData, SyncInfo, EditedPasswordEntryInfo
+from ..models import (
+    GroupChildrenData, GroupParentData, PasswordEntryData, SyncInfo, 
+    EditedPasswordEntryInfo, EditedEntryWithGroup
+)
 
 logger: logging.Logger = logging.getLogger("passwordmanager-client")
 DEFAULT_CHUNK_SIZE: int = 25 * 1024 * 1024  # 25 MiB
@@ -52,8 +57,13 @@ class PasswordGroupMethods:
 
     def create_group(
         self, group_name: str,
-        parent_id: uuid.UUID | None = None
-    ):
+        parent_id: uuid.UUID | None = None,
+        group_id: uuid.UUID | None = None
+    ) -> GroupParentData:
+        """Create a group.
+        
+        `group_id` parameter is to stay in sync with the server.
+        """
         with Session(self.engine) as session:
             # So the 'Root' group can be created without a parent
             if parent_id:
@@ -73,7 +83,9 @@ class PasswordGroupMethods:
                     logger.info("Root group already exists, skipping creation...")
                     return False
             
+            g_id = group_id if group_id is not None else uuid.uuid4()
             new_group = PasswordGroups(
+                group_id=g_id,
                 group_name=group_name,
                 parent_id=parent_id,
                 is_root=False if parent_id else True
@@ -158,6 +170,20 @@ class PasswordGroupMethods:
             session.commit()
 
         return True
+    
+    def check_group_exists(self, group_id: uuid.UUID) -> bool:
+        with Session(self.engine) as session:
+            result = session.exec(
+                select(PasswordGroups)
+                .where(
+                    PasswordGroups.group_id == group_id
+                )
+            )
+            group = result.one_or_none()
+            if not group:
+                return False
+            
+        return True
 
 
 class PasswordEntryMethods:
@@ -167,8 +193,14 @@ class PasswordEntryMethods:
 
     def create_entry(
         self, group_id: uuid.UUID,
-        data: EditedPasswordEntryInfo
+        data: EditedPasswordEntryInfo,
+        entry_id: uuid.UUID | None = None,
+        created_at: datetime | None = None
     ) -> PasswordEntryData:
+        """Create password entry.
+        
+        `entry_id` and `created_at` parameter is used by `SyncedDatabase` to stay in sync with the server.
+        """
         with Session(self.engine) as session:
             result = session.exec(
                 select(PasswordGroups)
@@ -178,11 +210,18 @@ class PasswordEntryMethods:
             group = result.one()
             url_or_none = str(data.url) if data.url else None
 
+            # TODO: Make this a separate model if the amount of data that needs to be synced
+            # from the server gets too large
+            e_id = entry_id if entry_id is not None else uuid.uuid4()
+            c_at = created_at if created_at is not None else datetime.now(timezone.utc)
+
             # TODO: Encrypt password entries so its safer in the database
             new_entry = PasswordEntry(
+                entry_id=e_id,
                 title=data.title, username=data.username,
                 password=data.password, url=url_or_none,
-                notes=data.notes, group_id=group.group_id
+                notes=data.notes, group_id=group.group_id,
+                created_at=c_at
             )
             session.add(new_entry)
 
@@ -237,14 +276,16 @@ class PasswordEntryMethods:
         return entries_public
 
     def delete_entry_by_id(
-        self, entry_id: uuid.UUID
+        self, entry_id: uuid.UUID,
+        group_id: uuid.UUID
     ) -> bool:
         with Session(self.engine) as session:
             result = session.exec(
                 select(PasswordEntry)
                 .join(PasswordGroups)
                 .where(
-                    PasswordEntry.entry_id == entry_id
+                    PasswordEntry.entry_id == entry_id,
+                    PasswordGroups.group_id == group_id
                 )
             )
             entry = result.one()
@@ -256,7 +297,7 @@ class PasswordEntryMethods:
 
     def update_entry_data(
         self, entry_id: uuid.UUID,
-        data: EditedPasswordEntryInfo
+        data: EditedEntryWithGroup
     ) -> PasswordEntryData:
         with Session(self.engine) as session:
             result = session.exec(
@@ -320,6 +361,7 @@ class SyncConfigMethods:
             config.username = username
             config.server_url = str(server_url) if server_url else None
 
+            config.sync_enabled = sync_enabled
             session.commit()
 
             return SyncInfo(
@@ -338,3 +380,18 @@ class SyncConfigMethods:
                 server_url=config.server_url,
                 sync_enabled=config.sync_enabled
             )
+
+    def toggle_sync_enabled(self, sync_enabled: bool):
+        with Session(self.engine) as session:
+            result = session.exec(select(SyncConfig))
+            config = result.one()
+
+            config.sync_enabled = sync_enabled
+            syncinfo = SyncInfo(
+                username=config.username,
+                server_url=config.server_url,
+                sync_enabled=sync_enabled
+            )
+
+            session.commit()
+            return syncinfo

@@ -2,14 +2,20 @@ import logging
 import traceback
 import typing
 
+import keyring
+
+from functools import partial
 from pathlib import Path
 
 from PySide6.QtCore import QAbstractListModel, QModelIndex, QObject, Qt, Signal, Slot
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 
 from ...version import __version__
-from ...localdb.database import MainDatabase
+from ...models import SyncInfo, SavedSyncInfo
 from ...workers import make_worker_thread
+
+from ...localdb.database import MainDatabase
+from ...localdb.synced_db import SyncedDatabase
 
 
 if typing.TYPE_CHECKING:
@@ -58,6 +64,7 @@ class RecentDatabasesListModel(QAbstractListModel):
 
 class DatabasesTabController(QObject):
     databaseLoaded = Signal(MainDatabase)
+    databaseWithSyncLoaded = Signal(SyncedDatabase)
 
     def __init__(self, app_parent: 'AppsController'):
         super().__init__(app_parent)
@@ -138,6 +145,8 @@ class DatabasesTabController(QObject):
             settings.recent_databases.remove(item)
 
             settings.save_settings()
+            self.recent_databases_model.populate_model(settings.recent_databases)
+            
             return
         
         self._load_database(item)
@@ -157,12 +166,44 @@ class DatabasesTabController(QObject):
         logger.error("Failed to load database due to exception:", exc_info=exc)
     
     def _load_database(self, path: Path):
-        self.db = MainDatabase()
-        make_worker_thread(lambda: self.db.setup(path), self.database_after_setup, self.worker_exc_received)
+        self.maindb = MainDatabase()
+        make_worker_thread(lambda: self.maindb.setup(path), self.database_after_setup, self.worker_exc_received)
 
         self.ui.statusbar.showMessage('Databases - Setting up database', timeout=5000)
 
     @Slot(None)
     def database_after_setup(self):
-        self.databaseLoaded.emit(self.db)
-        self.ui.statusbar.showMessage("Databases - Loaded database", timeout=5000)
+        make_worker_thread(self.maindb.syncinfo.get_sync_info, self.db_check_sync_enabled, self.worker_exc_received)
+        self.ui.statusbar.showMessage("Databases - Checking if server sync is enabled", timeout=5000)
+
+    @Slot(SyncInfo)
+    def db_check_sync_enabled(self, data: SyncInfo):
+        logger.info(data)
+        if not data.sync_enabled:
+            self.databaseLoaded.emit(self.maindb)
+            self.ui.statusbar.showMessage("Databases - Loaded local database", timeout=5000)
+            return
+
+        access_token = keyring.get_password(
+            'newguy103-passwordmanager', 
+            f"{data.username}={str(data.server_url)}"
+        )
+        saved_sync_info = SavedSyncInfo(
+            username=data.username,
+            server_url=data.server_url,
+            access_token=access_token,
+            sync_enabled=data.sync_enabled
+        )
+
+        self.synced_db = SyncedDatabase()
+        func = partial(
+            self.synced_db.setup, self.maindb,
+            saved_sync_info
+        )
+        logger.info(self.maindb)
+        make_worker_thread(func, self.synced_db_after_setup, self.worker_exc_received)
+    
+    @Slot(None)
+    def synced_db_after_setup(self):
+        self.databaseWithSyncLoaded.emit(self.synced_db)
+        self.ui.statusbar.showMessage("Databases - Loaded synced database", timeout=5000)

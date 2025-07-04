@@ -13,7 +13,8 @@ from PySide6.QtGui import QAction, QIcon, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import QDialog, QHeaderView, QMenu, QMessageBox, QDialogButtonBox
 
 from ...localdb.database import MainDatabase
-from ...models import AddPasswordGroup, GroupParentData, PasswordEntryData, EditedPasswordEntryInfo
+from ...localdb.synced_db import SyncedDatabase
+from ...models import AddPasswordGroup, GroupParentData, PasswordEntryData, EditedPasswordEntryInfo, EditedEntryWithGroup
 from ...ui.password_entry_info_dialog import Ui_PasswordEntryInfoDialog
 from ...ui.add_password_group_dialog import Ui_AddPasswordGroupDialog
 from ...workers import make_worker_thread
@@ -132,10 +133,10 @@ class PasswordsTabController(QObject):
         self.app_parent = app_parent
 
         self.ui = self.mw_parent.ui
-        self.db: MainDatabase = None
+        self.db: MainDatabase | SyncedDatabase = None
     
     @Slot(None)
-    def database_loaded(self, database: MainDatabase):
+    def database_loaded(self, database: MainDatabase | SyncedDatabase):
         self.db = database
         make_worker_thread(
             self.db.groups.get_children_of_root, 
@@ -300,7 +301,7 @@ class PasswordEntriesController(QObject):
         if btn == QMessageBox.StandardButton.No:
             return
         
-        func = partial(self.db.entries.delete_entry_by_id, item.entry_id)
+        func = partial(self.db.entries.delete_entry_by_id, item.entry_id, item.group_id)
         make_worker_thread(func, self.model_delete_password_entry, self.pw_parent.worker_exc_received)
 
         self.entries_model.delete_entry(index)
@@ -320,8 +321,8 @@ class PasswordEntriesController(QObject):
         self._entry_needs_update = (index, item)
         self.entry_info_dialog.show()
 
-    @Slot(EditedPasswordEntryInfo)
-    def edit_entry_dialog_accepted(self, data: EditedPasswordEntryInfo):
+    @Slot(EditedEntryWithGroup)
+    def edit_entry_dialog_accepted(self, data: EditedEntryWithGroup):
         # TODO: Tempfix to get it working, clean up to be safer in the case of multiple updated entries
         assert self._entry_needs_update is not None
 
@@ -607,7 +608,7 @@ class PasswordEntryInfoController(QObject):
 
 class PasswordEntryInfoDialog(QDialog):
     addEntryRequested = Signal(EditedPasswordEntryInfo)
-    editEntryRequested = Signal(EditedPasswordEntryInfo)
+    editEntryRequested = Signal(EditedEntryWithGroup)
 
     def __init__(self, /, parent: PasswordEntriesController):
         super().__init__(parent.mw_parent)
@@ -617,10 +618,13 @@ class PasswordEntryInfoDialog(QDialog):
         self.ui.setupUi(self)
 
         self._emit_as: EmitDialogInfoAs = None
+        self._data: PasswordEntryData | None = None
+
         self.ui.urlLineEdit.textEdited.connect(self.url_text_edited)
     
     def reset_data(self, emit_as: EmitDialogInfoAs = EmitDialogInfoAs.add):
         self._emit_as = emit_as
+        self._data = None
         
         self.ui.titleLineEdit.setText('')
         self.ui.usernameLineEdit.setText('')
@@ -638,6 +642,7 @@ class PasswordEntryInfoDialog(QDialog):
         self.ui.urlLineEdit.setText(str(data.url) if data.url else '')
 
         self.ui.notesPlainTextEdit.setPlainText(data.notes)
+        self._data = data
 
     def accept(self):
         title = self.ui.titleLineEdit.text()
@@ -659,7 +664,10 @@ class PasswordEntryInfoDialog(QDialog):
         if self._emit_as == EmitDialogInfoAs.add:
             self.addEntryRequested.emit(data)
         elif self._emit_as == EmitDialogInfoAs.edit:
-            self.editEntryRequested.emit(data)
+            assert self._data is not None, "Edit data is invalid"
+
+            with_group_data = EditedEntryWithGroup(group_id=self._data.group_id, **data.model_dump())
+            self.editEntryRequested.emit(with_group_data)
         
         return super().accept()
 

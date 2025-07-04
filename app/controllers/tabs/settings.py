@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QDialog, QMessageBox, QDialogButtonBox, QAbstractB
 
 from ...version import __version__
 from ...localdb.database import MainDatabase
+from ...localdb.synced_db import SyncedDatabase
 from ...ui.edit_sync_info_dialog import Ui_EditSyncInfoDialog
 
 from ...client import Client
@@ -20,7 +21,7 @@ from ...client.models import AccessTokenError, AccessTokenResponse
 from ...client.models import BodyTokenLoginApiAuthTokenPost as TokenLoginBody
 from ...client.types import Response
 
-from ...models import SyncInfo, TestSyncAuth, SaveSyncInfo
+from ...models import SyncInfo, TestSyncAuth, SavedSyncInfo
 from ...config import app_file_paths, LogLevels
 from ...workers import make_worker_thread
 
@@ -64,12 +65,13 @@ class SettingsTabController(QObject):
         self.edit_syncinfo_dialog.testAuthRequested.connect(self.test_auth_request)
 
         self.edit_syncinfo_dialog.dataSaveRequested.connect(self.save_syncinfo)
-        self.testAuthComplete.connect(self.edit_syncinfo_dialog.test_auth_complete)
+        self.edit_syncinfo_dialog.syncEnabledToggled.connect(self.toggle_sync_enabled)
 
+        self.testAuthComplete.connect(self.edit_syncinfo_dialog.test_auth_complete)
         self.testAuthFailed.connect(self.edit_syncinfo_dialog.test_auth_failed)
 
     @Slot(MainDatabase)
-    def database_loaded(self, database: MainDatabase):
+    def database_loaded(self, database: MainDatabase | SyncedDatabase):
         self.db = database
         make_worker_thread(self.db.syncinfo.get_sync_info, self.sync_info_returned, self.worker_exc_received)
     
@@ -171,8 +173,8 @@ class SettingsTabController(QObject):
 
         self.testAuthComplete.emit(data)
     
-    @Slot(SaveSyncInfo)
-    def save_syncinfo(self, data: SaveSyncInfo):
+    @Slot(SavedSyncInfo)
+    def save_syncinfo(self, data: SavedSyncInfo):
         func = partial(
             self.db.syncinfo.set_sync_info,
             data.username, data.server_url,
@@ -192,6 +194,19 @@ class SettingsTabController(QObject):
         self.ui.syncInfoUsernameLabel.setText(f"Username: {data.username or None}")
         self.ui.syncInfoServerURLLabel.setText(f"Server URL: {data.server_url}")
 
+    @Slot(bool)
+    def toggle_sync_enabled(self, sync_enabled: bool):
+        func = partial(
+            self.db.syncinfo.toggle_sync_enabled,
+            sync_enabled
+        )
+        make_worker_thread(func, self.database_toggle_sync_complete, self.worker_exc_received)
+    
+    @Slot(SyncInfo)
+    def database_toggle_sync_complete(self, data: SyncInfo):
+        self.syncinfo = data
+        self.ui.statusbar.showMessage("Settings - Toggled sync enabled", timeout=5000)
+    
     @Slot(Exception)
     def worker_exc_received(self, exc: Exception):
         tb: str = ''.join(traceback.format_exception(exc, limit=1))
@@ -208,8 +223,9 @@ class SettingsTabController(QObject):
 
 class EditSyncInfoDialog(QDialog):
     testAuthRequested = Signal(TestSyncAuth)
-    dataSaveRequested = Signal(SaveSyncInfo)
-
+    dataSaveRequested = Signal(SavedSyncInfo)
+    syncEnabledToggled = Signal(bool)
+    
     def __init__(self, parent: SettingsTabController):
         super().__init__(parent.mw_parent)
         self.settings_parent = parent
@@ -280,14 +296,17 @@ class EditSyncInfoDialog(QDialog):
             username = self.ui.usernameLineEdit.text()
             server_url = self.ui.serverURLLineEdit.text()
 
-            save_syncinfo = SaveSyncInfo(
+            save_syncinfo = SavedSyncInfo(
                 username=username,
                 server_url=server_url,
                 access_token=self._authdata.access_token,
                 sync_enabled=self.ui.syncEnabledCheckBox.isChecked()
             )
-
             self.dataSaveRequested.emit(save_syncinfo)
+        
+        sync_enabled = self.ui.syncEnabledCheckBox.isChecked()
+        if self.syncinfo.sync_enabled != sync_enabled and not self._authdata:
+            self.syncEnabledToggled.emit(sync_enabled)
         
         return super().accept()
     

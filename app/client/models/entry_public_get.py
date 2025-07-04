@@ -5,7 +5,11 @@ from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 
+from dateutil.parser import isoparse
+from typing import cast
+from typing import Union
 from uuid import UUID
+import datetime
 
 
 T = TypeVar("T", bound="EntryPublicGet")
@@ -16,10 +20,11 @@ class EntryPublicGet:
     title: str
     username: str
     password: str
-    url: str
+    url: Union[None, str]
     notes: str
     entry_id: UUID
     group_id: UUID
+    created_at: datetime.datetime
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -29,6 +34,7 @@ class EntryPublicGet:
 
         password = self.password
 
+        url: Union[None, str]
         url = self.url
 
         notes = self.notes
@@ -36,6 +42,8 @@ class EntryPublicGet:
         entry_id = str(self.entry_id)
 
         group_id = str(self.group_id)
+
+        created_at = self.created_at.isoformat()
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -48,6 +56,7 @@ class EntryPublicGet:
                 "notes": notes,
                 "entry_id": entry_id,
                 "group_id": group_id,
+                "created_at": created_at,
             }
         )
 
@@ -62,13 +71,20 @@ class EntryPublicGet:
 
         password = d.pop("password")
 
-        url = d.pop("url")
+        def _parse_url(data: object) -> Union[None, str]:
+            if data is None:
+                return data
+            return cast(Union[None, str], data)
+
+        url = _parse_url(d.pop("url"))
 
         notes = d.pop("notes")
 
         entry_id = UUID(d.pop("entry_id"))
 
         group_id = UUID(d.pop("group_id"))
+
+        created_at = isoparse(d.pop("created_at"))
 
         entry_public_get = cls(
             title=title,
@@ -78,6 +94,7 @@ class EntryPublicGet:
             notes=notes,
             entry_id=entry_id,
             group_id=group_id,
+            created_at=created_at,
         )
 
         entry_public_get.additional_properties = d

@@ -5,6 +5,9 @@ from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 
+from typing import cast, Union
+
+
 T = TypeVar("T", bound="EntryCreate")
 
 
@@ -13,7 +16,7 @@ class EntryCreate:
     title: str
     username: str
     password: str
-    url: str
+    url: Union[None, str]
     notes: str
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -24,6 +27,7 @@ class EntryCreate:
 
         password = self.password
 
+        url: Union[None, str]
         url = self.url
 
         notes = self.notes
@@ -51,7 +55,12 @@ class EntryCreate:
 
         password = d.pop("password")
 
-        url = d.pop("url")
+        def _parse_url(data: object) -> Union[None, str]:
+            if data is None:
+                return data
+            return cast(Union[None, str], data)
+
+        url = _parse_url(d.pop("url"))
 
         notes = d.pop("notes")
 

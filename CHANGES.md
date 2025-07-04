@@ -1,35 +1,33 @@
-# Add initial support for sync information and implement entry editing
+# Add functionality for syncing database with the server
 
 **Version**: v0.1.0
 
-**Date:** 26/06/2025
+**Date:** 02/08/2025
 
 ## Additions
 
-**`/pyside6_ui/edit_sync_info_dialog.ui | /app/ui/edit_sync_info_dialog.py`**
-
 **`/app/controllers/tabs/settings.py`**:
 
-* Added support for sync information, functionality not yet implemented.
+* Added a way to toggle sync without re-testing authorization.
 
-**`/app/controllers/tabs/passwords.py`**:
+**`/app/controllers/tabs/databases.py`**:
 
-* Added `PasswordEntryTableModel.update_entry()`.
-* Added a messagebox to `PasswordsTabController.worker_exc_received()` for better UX.
-* Added right-click action to edit entries.
+* Added a check to see if sync is enabled or not, then sets up the database.
+* Added `databaseWithSyncLoaded` to differentiate from local and synced database.
 
 **`/app/models.py`**:
 
-* Added models for sync information and state.
+* Added `EditedEntryWithGroup` to allow passing a `group_id` when editing an entry.
 
-**`/app/localdb/dbtables.py`**:
+**`/app/localdb/synced_db.py`**:
 
-* Added `SyncConfig` singleton to handle sync information.
+* Added as a wrapper to `MainDatabase` to enable syncing with the server.
 
 **`/app/localdb/database.py`**:
 
-* Added `SyncConfigMethods`.
-* Added `PasswordEntryMethods.update_entry_data()` to handle editing entries.
+* Added `group_id` parameter to `PasswordGroupMethods.create_group()` to stay in sync with the server.
+* Added `entry_id` and `group_id` parameter to `PasswordEntryMethods.create_entry()` to stay in sync with the server.
+* Added `SyncConfigMethods.toggle_sync_enabled()` to toggle when sync is enabled or not.
 
 ## Changes
 
@@ -37,39 +35,11 @@
 
 * Updated generated OpenAPI client to match the server.
 
-**`/app/config.py`**:
-
-* Removed `logins` field and `AvailableLogins` model because login info is moved to the specific database.
-
-**`/app/models.py`**:
-
-* Changed `PasswordEntryBase` to use an `AnyUrl | None` instead of a `str`.
-* Changed `AddPasswordEntry` to `EditedPasswordEntryInfo` to unify adding and editing an entry.
-
-**`/app/controllers/login_page.py`**:
-
-* Removed login page logic because the client can now set up sync optionally.
-
-**`/app/controllers/tabs/databases.py`**:
-
-* Changed to load the database and run `setup()` and emit a `MainDatabase` instance.
-
 **`/app/controllers/tabs/passwords.py`**:
 
-* Changed to receive a loaded database instance instead of loading the database directly.
-* Changed so that the entry info dialog is now created once and uses signals to add/edit data.
-
-**`/app/localdb/database.py`**:
-
-* Changed `PasswordEntryMethods.create_entry()` to take in an `EditedPasswordEntryInfo` model instead
-  of the fields individually to simplify the code.
-
-**`/app/localdb/dbtables.py`**:
-
-* Changed `PasswordEntry.url` to be `str | None` and nullable.
+* `PasswordEntryInfoDialog` now returns a group ID when finishing an edit operation.
 
 ## Misc
 
-* Currently working on a way to add actual sync functionality and figuring out how that would add new routes
-  to the server app.
-* Will cleanup the app slowly after the core is complete.
+* Most of the app now works when using the synced database, the next step is to find a way to ensure
+  the local copy of the client always stays synced with the server.

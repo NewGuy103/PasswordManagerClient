@@ -20,6 +20,10 @@ class EditedPasswordEntryInfo(PasswordEntryBase):
     pass
 
 
+class EditedEntryWithGroup(EditedPasswordEntryInfo):
+    group_id: uuid.UUID
+
+
 class PasswordEntryData(PasswordEntryBase):
     entry_id: uuid.UUID
     group_id: uuid.UUID
@@ -61,7 +65,7 @@ class TestSyncAuth(SyncBase):
     password: str
 
 
-class SaveSyncInfo(SyncBase):
+class SavedSyncInfo(SyncBase):
     server_url: HttpUrl
     access_token: str
     sync_enabled: bool
