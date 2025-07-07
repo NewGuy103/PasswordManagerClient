@@ -1,45 +1,43 @@
-# Add functionality for syncing database with the server
+# Clean up and separate sync functionality
 
 **Version**: v0.1.0
 
-**Date:** 04/07/2025
+**Date:** 07/07/2025
 
 ## Additions
 
-**`/app/controllers/tabs/settings.py`**:
+**`/pyproject.toml`**:
 
-* Added a way to toggle sync without re-testing authorization.
+* Added `datamodel-code-generator[http]` as a dev dependency to generate the sync client Pydantic models.
 
-**`/app/controllers/tabs/databases.py`**:
+**`/scripts/generate-client.sh`**:
 
-* Added a check to see if sync is enabled or not, then sets up the database.
-* Added `databaseWithSyncLoaded` to differentiate from local and synced database.
+* Added `datamodel-codegen` as a step in generating the client.
 
-**`/app/models.py`**:
+**`/app/serversync/`**:
 
-* Added `EditedEntryWithGroup` to allow passing a `group_id` when editing an entry.
-
-**`/app/localdb/synced_db.py`**:
-
-* Added as a wrapper to `MainDatabase` to enable syncing with the server.
-
-**`/app/localdb/database.py`**:
-
-* Added `group_id` parameter to `PasswordGroupMethods.create_group()` to stay in sync with the server.
-* Added `entry_id` and `group_id` parameter to `PasswordEntryMethods.create_entry()` to stay in sync with the server.
-* Added `SyncConfigMethods.toggle_sync_enabled()` to toggle when sync is enabled or not.
-
-## Changes
-
-**`/app/client/`**:
-
-* Updated generated OpenAPI client to match the server.
+* Added abstraction to the generated client as a simpler way to sync with the server.
 
 **`/app/controllers/tabs/passwords.py`**:
 
-* `PasswordEntryInfoDialog` now returns a group ID when finishing an edit operation.
+* Added a way to optionally retrieve a loaded client.
+
+## Changes
+
+**`/app/localdb/synced_db.py`**:
+
+* Removed `SyncedDatabase` implementation to separate the sync and the database.
+
+**`/app/controllers/apps.py`**:
+
+* Changed to handle disabling/enabling and switching to tabs directly instead of letting the controllers do it.
+
+**`/app/controllers/tabs/databases.py`**:
+
+* Removed code to initialize the sync client and moved it to `sync_client.py`.
 
 ## Misc
 
-* Most of the app now works when using the synced database, the next step is to find a way to ensure
-  the local copy of the client always stays synced with the server.
+* Separating the network code from the database code will make it easier to track unsynced changes
+  and syncing with the server by allowing the controller to know what is happening.
+* Actually implementing the sync code will take a while so this is only one step.

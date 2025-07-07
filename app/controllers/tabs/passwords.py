@@ -13,10 +13,10 @@ from PySide6.QtGui import QAction, QIcon, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import QDialog, QHeaderView, QMenu, QMessageBox, QDialogButtonBox
 
 from ...localdb.database import MainDatabase
-from ...localdb.synced_db import SyncedDatabase
 from ...models import AddPasswordGroup, GroupParentData, PasswordEntryData, EditedPasswordEntryInfo, EditedEntryWithGroup
 from ...ui.password_entry_info_dialog import Ui_PasswordEntryInfoDialog
 from ...ui.add_password_group_dialog import Ui_AddPasswordGroupDialog
+from ...serversync.client import SyncClient
 from ...workers import make_worker_thread
 
 if typing.TYPE_CHECKING:
@@ -133,10 +133,12 @@ class PasswordsTabController(QObject):
         self.app_parent = app_parent
 
         self.ui = self.mw_parent.ui
-        self.db: MainDatabase | SyncedDatabase = None
+        self.db: MainDatabase = None
+
+        self.client: SyncClient | None = None
     
-    @Slot(None)
-    def database_loaded(self, database: MainDatabase | SyncedDatabase):
+    @Slot(MainDatabase)
+    def database_loaded(self, database: MainDatabase):
         self.db = database
         make_worker_thread(
             self.db.groups.get_children_of_root, 
@@ -144,12 +146,12 @@ class PasswordsTabController(QObject):
         )
         self.ui.statusbar.showMessage('Passwords - Loading top-level entries', timeout=5000)
 
+    @Slot(SyncClient)
+    def client_loaded(self, client: SyncClient):
+        self.client = client
+    
     @Slot(GroupParentData)
     def setup(self, data: GroupParentData):
-        self.ui.appTabWidget.setTabEnabled(0, False)  # disable databases tab
-        self.ui.appTabWidget.setTabEnabled(1, True)  # enable passwords
-
-        self.ui.appTabWidget.setCurrentIndex(1)
         self.current_group = data
 
         # Controllers
@@ -187,6 +189,8 @@ class PasswordEntriesController(QObject):
 
         self.ui = self.mw_parent.ui
         self.db = pw_parent.db
+
+        self.client = pw_parent.client
 
         self.entries_model = PasswordEntriesTableModel(parent=self)
         self.ui.passwordEntriesTableView.setModel(self.entries_model)
@@ -356,6 +360,7 @@ class PasswordGroupsItemController(QObject):
         self.ui = self.mw_parent.ui
         self.db = pw_parent.db
 
+        self.client = pw_parent.client
         self.worker_exc_received = pw_parent.worker_exc_received
 
         self.groups_model = QStandardItemModel(parent=self)

@@ -61,6 +61,9 @@ class MainWindow(QMainWindow):
         if self.app_ctrl:
             if self.app_ctrl.pw_tab.db is not None:
                 self.app_ctrl.pw_tab.db.close()
+            
+            if self.app_ctrl.pw_tab.client is not None:
+                self.app_ctrl.pw_tab.client.close()
 
         event.accept()
         return super().closeEvent(event)

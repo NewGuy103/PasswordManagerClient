@@ -12,7 +12,6 @@ from PySide6.QtWidgets import QDialog, QMessageBox, QDialogButtonBox, QAbstractB
 
 from ...version import __version__
 from ...localdb.database import MainDatabase
-from ...localdb.synced_db import SyncedDatabase
 from ...ui.edit_sync_info_dialog import Ui_EditSyncInfoDialog
 
 from ...client import Client
@@ -71,7 +70,7 @@ class SettingsTabController(QObject):
         self.testAuthFailed.connect(self.edit_syncinfo_dialog.test_auth_failed)
 
     @Slot(MainDatabase)
-    def database_loaded(self, database: MainDatabase | SyncedDatabase):
+    def database_loaded(self, database: MainDatabase):
         self.db = database
         make_worker_thread(self.db.syncinfo.get_sync_info, self.sync_info_returned, self.worker_exc_received)
     
