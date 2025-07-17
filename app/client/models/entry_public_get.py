@@ -7,7 +7,6 @@ from attrs import field as _attrs_field
 
 from dateutil.parser import isoparse
 from typing import cast
-from typing import Union
 from uuid import UUID
 import datetime
 
@@ -20,7 +19,7 @@ class EntryPublicGet:
     title: str
     username: str
     password: str
-    url: Union[None, str]
+    url: None | str
     notes: str
     entry_id: UUID
     group_id: UUID
@@ -34,7 +33,7 @@ class EntryPublicGet:
 
         password = self.password
 
-        url: Union[None, str]
+        url: None | str
         url = self.url
 
         notes = self.notes
@@ -71,10 +70,10 @@ class EntryPublicGet:
 
         password = d.pop("password")
 
-        def _parse_url(data: object) -> Union[None, str]:
+        def _parse_url(data: object) -> None | str:
             if data is None:
                 return data
-            return cast(Union[None, str], data)
+            return cast(None | str, data)
 
         url = _parse_url(d.pop("url"))
 

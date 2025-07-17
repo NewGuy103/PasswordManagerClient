@@ -2,18 +2,17 @@ import typing
 
 from PySide6.QtCore import QObject, Slot
 
-from .tabs.passwords import PasswordsTabController
 from .tabs.databases import DatabasesTabController
+from .tabs.passwords import PasswordsTabController
 from .tabs.settings import SettingsTabController
 from .tabs.sync_client import SyncClientLoader
-
 
 if typing.TYPE_CHECKING:
     from ..main import MainWindow
 
 
 class AppsController(QObject):
-    def __init__(self, mw_parent: 'MainWindow'):
+    def __init__(self, mw_parent: "MainWindow"):
         super().__init__(mw_parent)
 
         self.mw_parent = mw_parent
@@ -41,7 +40,7 @@ class AppsController(QObject):
 
         self.sync_loader.clientLoaded.connect(self.enable_passwords_tab)
         self.sync_loader.loadWithoutSync.connect(self.enable_passwords_tab)
-    
+
     @Slot()
     def wait_for_sync_load(self):
         self.ui.appTabWidget.setTabEnabled(1, False)

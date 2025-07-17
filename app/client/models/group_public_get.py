@@ -6,7 +6,6 @@ from attrs import field as _attrs_field
 
 
 from typing import cast
-from typing import Union
 from uuid import UUID
 
 if TYPE_CHECKING:
@@ -19,7 +18,7 @@ T = TypeVar("T", bound="GroupPublicGet")
 @_attrs_define
 class GroupPublicGet:
     group_name: str
-    parent_id: Union[None, UUID]
+    parent_id: None | UUID
     group_id: UUID
     child_groups: list["GroupPublicChildren"]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -27,7 +26,7 @@ class GroupPublicGet:
     def to_dict(self) -> dict[str, Any]:
         group_name = self.group_name
 
-        parent_id: Union[None, str]
+        parent_id: None | str
         if isinstance(self.parent_id, UUID):
             parent_id = str(self.parent_id)
         else:
@@ -60,7 +59,7 @@ class GroupPublicGet:
         d = dict(src_dict)
         group_name = d.pop("group_name")
 
-        def _parse_parent_id(data: object) -> Union[None, UUID]:
+        def _parse_parent_id(data: object) -> None | UUID:
             if data is None:
                 return data
             try:
@@ -71,7 +70,7 @@ class GroupPublicGet:
                 return parent_id_type_0
             except:  # noqa: E722
                 pass
-            return cast(Union[None, UUID], data)
+            return cast(None | UUID, data)
 
         parent_id = _parse_parent_id(d.pop("parent_id"))
 

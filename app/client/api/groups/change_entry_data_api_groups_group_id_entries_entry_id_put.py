@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any, Optional, Union
+from typing import Any
 
 import httpx
 
@@ -23,10 +23,7 @@ def _get_kwargs(
 
     _kwargs: dict[str, Any] = {
         "method": "put",
-        "url": "/api/groups/{group_id}/entries/{entry_id}".format(
-            group_id=group_id,
-            entry_id=entry_id,
-        ),
+        "url": f"/api/groups/{group_id}/entries/{entry_id}",
     }
 
     _kwargs["json"] = body.to_dict()
@@ -38,8 +35,8 @@ def _get_kwargs(
 
 
 def _parse_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Optional[Union[EntryPublicGet, HTTPValidationError]]:
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> EntryPublicGet | HTTPValidationError | None:
     if response.status_code == 200:
         response_200 = EntryPublicGet.from_dict(response.json())
 
@@ -55,8 +52,8 @@ def _parse_response(
 
 
 def _build_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Response[Union[EntryPublicGet, HTTPValidationError]]:
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> Response[EntryPublicGet | HTTPValidationError]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -71,7 +68,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient,
     body: EntryUpdate,
-) -> Response[Union[EntryPublicGet, HTTPValidationError]]:
+) -> Response[EntryPublicGet | HTTPValidationError]:
     """Change Entry Data
 
     Args:
@@ -106,7 +103,7 @@ def sync(
     *,
     client: AuthenticatedClient,
     body: EntryUpdate,
-) -> Optional[Union[EntryPublicGet, HTTPValidationError]]:
+) -> EntryPublicGet | HTTPValidationError | None:
     """Change Entry Data
 
     Args:
@@ -136,7 +133,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
     body: EntryUpdate,
-) -> Response[Union[EntryPublicGet, HTTPValidationError]]:
+) -> Response[EntryPublicGet | HTTPValidationError]:
     """Change Entry Data
 
     Args:
@@ -169,7 +166,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient,
     body: EntryUpdate,
-) -> Optional[Union[EntryPublicGet, HTTPValidationError]]:
+) -> EntryPublicGet | HTTPValidationError | None:
     """Change Entry Data
 
     Args:

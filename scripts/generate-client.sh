@@ -19,3 +19,9 @@ uv run datamodel-codegen \
 --use-standard-collections \
 --output-datetime-class AwareDatetime \
 --use-non-positive-negative-number-constrained-types
+
+uv run ruff check app/client --fix
+uv run ruff format app/client
+
+uv run ruff check app/serversync --fix
+uv run ruff format app/serversync

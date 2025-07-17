@@ -21,24 +21,27 @@ logger: logging.Logger = logging.getLogger("passwordmanager-client")
 
 
 class RecentDatabasesListModel(QAbstractListModel):
-    def __init__(self, /, parent: 'DatabasesTabController' = None):
+    def __init__(self, /, parent: "DatabasesTabController" = None):
         super().__init__(parent)
         self.db_ctrl = parent
 
         self._display_data: list[str] = []
         self._item_data: list[Path] = []
-    
-    def rowCount(self, /, parent=QModelIndex()):
+
+    def rowCount(self, /, parent: QModelIndex = None):
+        if parent is None:
+            parent = QModelIndex()
+
         return len(self._item_data)
 
     def data(self, index, /, role):
         if role == Qt.ItemDataRole.UserRole:
             return self._item_data[index.row()]
-        
+
         if role == Qt.ItemDataRole.DisplayRole:
             value = self._display_data[index.row()]
             return value
-        
+
         return None
 
     def populate_model(self, recent_databases: list[Path]):
@@ -60,7 +63,7 @@ class RecentDatabasesListModel(QAbstractListModel):
 class DatabasesTabController(QObject):
     databaseLoaded = Signal(MainDatabase)
 
-    def __init__(self, app_parent: 'AppsController'):
+    def __init__(self, app_parent: "AppsController"):
         super().__init__(app_parent)
 
         self.mw_parent = app_parent.mw_parent
@@ -81,12 +84,11 @@ class DatabasesTabController(QObject):
     @Slot()
     def new_database_clicked(self):
         file_name, _ = QFileDialog.getSaveFileName(
-            self.mw_parent, "Save database to file",
-            "untitled.db", "Database Files (*.db)"
+            self.mw_parent, "Save database to file", "untitled.db", "Database Files (*.db)"
         )
         if not file_name:
             return
-        
+
         path = Path(file_name)
 
         settings = self.app_parent.mw_parent.app_settings
@@ -94,22 +96,19 @@ class DatabasesTabController(QObject):
         # Sort it to the top
         if path in settings.recent_databases:
             settings.recent_databases.remove(path)
-        
+
         settings.recent_databases.append(path)
         settings.save_settings()
 
         self._load_database(path)
-        self.ui.statusbar.showMessage('Databases - Creating new database', timeout=5000)
-    
+        self.ui.statusbar.showMessage("Databases - Creating new database", timeout=5000)
+
     @Slot()
     def open_database_clicked(self):
-        file_name, _ = QFileDialog.getOpenFileName(
-            self.mw_parent, "Open database",
-            "", "Database Files (*.db)"
-        )
+        file_name, _ = QFileDialog.getOpenFileName(self.mw_parent, "Open database", "", "Database Files (*.db)")
         if not file_name:
             return
-        
+
         path = Path(file_name)
 
         settings = self.app_parent.mw_parent.app_settings
@@ -117,12 +116,12 @@ class DatabasesTabController(QObject):
         # Sort it to the top
         if path in settings.recent_databases:
             settings.recent_databases.remove(path)
-        
+
         settings.recent_databases.append(path)
         settings.save_settings()
-        
+
         self._load_database(path)
-        self.ui.statusbar.showMessage('Databases - Opening database', timeout=5000)
+        self.ui.statusbar.showMessage("Databases - Opening database", timeout=5000)
 
     @Slot()
     def recent_databases_triggered(self, index: QModelIndex):
@@ -133,37 +132,37 @@ class DatabasesTabController(QObject):
                 "PasswordManager - Client",
                 "The database selected has been moved/deleted.",
                 buttons=QMessageBox.StandardButton.Ok,
-                defaultButton=QMessageBox.StandardButton.Ok
+                defaultButton=QMessageBox.StandardButton.Ok,
             )
             settings = self.app_parent.mw_parent.app_settings
             settings.recent_databases.remove(item)
 
             settings.save_settings()
             self.recent_databases_model.populate_model(settings.recent_databases)
-            
+
             return
-        
+
         self._load_database(item)
-        self.ui.statusbar.showMessage('Databases - Opening recently used database', timeout=5000)
+        self.ui.statusbar.showMessage("Databases - Opening recently used database", timeout=5000)
 
     @Slot(Exception)
     def worker_exc_received(self, exc: Exception):
-        tb: str = ''.join(traceback.format_exception(exc, limit=1))
+        tb: str = "".join(traceback.format_exception(exc, limit=1))
 
         QMessageBox.warning(
             self.mw_parent,
             "PasswordManager - Client",
             f"Unable to load database. Check the log file for more details. Traceback:\n\n{tb}",
             buttons=QMessageBox.StandardButton.Ok,
-            defaultButton=QMessageBox.StandardButton.Ok
+            defaultButton=QMessageBox.StandardButton.Ok,
         )
         logger.error("Failed to load database due to exception:", exc_info=exc)
-    
+
     def _load_database(self, path: Path):
         self.maindb = MainDatabase()
         make_worker_thread(lambda: self.maindb.setup(path), self.database_after_setup, self.worker_exc_received)
 
-        self.ui.statusbar.showMessage('Databases - Setting up database', timeout=5000)
+        self.ui.statusbar.showMessage("Databases - Setting up database", timeout=5000)
 
     @Slot(None)
     def database_after_setup(self):

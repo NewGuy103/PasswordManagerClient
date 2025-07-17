@@ -6,7 +6,7 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-from typing import cast, Union
+from typing import cast
 
 
 T = TypeVar("T", bound="BodyTokenLoginApiAuthTokenPost")
@@ -17,9 +17,9 @@ class BodyTokenLoginApiAuthTokenPost:
     grant_type: str
     username: str
     password: str
-    scope: Union[Unset, str] = ""
-    client_id: Union[None, Unset, str] = UNSET
-    client_secret: Union[None, Unset, str] = UNSET
+    scope: Unset | str = ""
+    client_id: None | Unset | str = UNSET
+    client_secret: None | Unset | str = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -31,13 +31,13 @@ class BodyTokenLoginApiAuthTokenPost:
 
         scope = self.scope
 
-        client_id: Union[None, Unset, str]
+        client_id: None | Unset | str
         if isinstance(self.client_id, Unset):
             client_id = UNSET
         else:
             client_id = self.client_id
 
-        client_secret: Union[None, Unset, str]
+        client_secret: None | Unset | str
         if isinstance(self.client_secret, Unset):
             client_secret = UNSET
         else:
@@ -72,21 +72,21 @@ class BodyTokenLoginApiAuthTokenPost:
 
         scope = d.pop("scope", UNSET)
 
-        def _parse_client_id(data: object) -> Union[None, Unset, str]:
+        def _parse_client_id(data: object) -> None | Unset | str:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(Union[None, Unset, str], data)
+            return cast(None | Unset | str, data)
 
         client_id = _parse_client_id(d.pop("client_id", UNSET))
 
-        def _parse_client_secret(data: object) -> Union[None, Unset, str]:
+        def _parse_client_secret(data: object) -> None | Unset | str:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(Union[None, Unset, str], data)
+            return cast(None | Unset | str, data)
 
         client_secret = _parse_client_secret(d.pop("client_secret", UNSET))
 

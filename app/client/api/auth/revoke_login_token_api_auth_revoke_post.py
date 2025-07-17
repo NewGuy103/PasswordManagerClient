@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any, Optional, Union
+from typing import Any
 
 import httpx
 
@@ -31,8 +31,8 @@ def _get_kwargs(
 
 
 def _parse_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Optional[Union[Any, HTTPValidationError]]:
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> Any | HTTPValidationError | None:
     if response.status_code == 200:
         response_200 = response.json()
         return response_200
@@ -47,8 +47,8 @@ def _parse_response(
 
 
 def _build_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Response[Union[Any, HTTPValidationError]]:
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> Response[Any | HTTPValidationError]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -61,7 +61,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient,
     body: BodyRevokeLoginTokenApiAuthRevokePost,
-) -> Response[Union[Any, HTTPValidationError]]:
+) -> Response[Any | HTTPValidationError]:
     """Revoke Login Token
 
      OAuth2 token revocation.
@@ -92,7 +92,7 @@ def sync(
     *,
     client: AuthenticatedClient,
     body: BodyRevokeLoginTokenApiAuthRevokePost,
-) -> Optional[Union[Any, HTTPValidationError]]:
+) -> Any | HTTPValidationError | None:
     """Revoke Login Token
 
      OAuth2 token revocation.
@@ -118,7 +118,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
     body: BodyRevokeLoginTokenApiAuthRevokePost,
-) -> Response[Union[Any, HTTPValidationError]]:
+) -> Response[Any | HTTPValidationError]:
     """Revoke Login Token
 
      OAuth2 token revocation.
@@ -147,7 +147,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient,
     body: BodyRevokeLoginTokenApiAuthRevokePost,
-) -> Optional[Union[Any, HTTPValidationError]]:
+) -> Any | HTTPValidationError | None:
     """Revoke Login Token
 
      OAuth2 token revocation.

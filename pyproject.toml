@@ -24,3 +24,7 @@ dev = [
 
 [tool.ruff]
 line-length = 120
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "UP", "B", "S"]
+ignore = ["S101", "B011", "E501", "UP046", "UP007", "S110"]

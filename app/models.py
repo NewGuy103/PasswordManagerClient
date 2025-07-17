@@ -1,12 +1,13 @@
 import uuid
+from datetime import UTC, datetime
 
-from datetime import datetime, timezone
-from pydantic import BaseModel, AwareDatetime, HttpUrl, AnyUrl
+from pydantic import AnyUrl, AwareDatetime, BaseModel, HttpUrl
 
 
 # State models
 class PasswordEntryBase(BaseModel):
     """Base for password entries."""
+
     title: str
     username: str
 
@@ -28,7 +29,7 @@ class EditedEntryWithGroup(EditedPasswordEntryInfo):
 class PasswordEntryData(PasswordEntryBase):
     entry_id: uuid.UUID
     group_id: uuid.UUID
-    created_at: AwareDatetime = datetime.now(timezone.utc)
+    created_at: AwareDatetime = datetime.now(UTC)
 
 
 # TODO: Extend this when adding metadata
@@ -43,7 +44,7 @@ class GroupBase(BaseModel):
 
 
 class GroupParentData(GroupBase):
-    child_groups: list['GroupChildrenData']
+    child_groups: list["GroupChildrenData"]
 
 
 # Leave out child_groups intentionally

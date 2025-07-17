@@ -1,8 +1,8 @@
 import uuid
+from datetime import UTC, datetime
 from typing import Optional
-from datetime import timezone, datetime
 
-from sqlmodel import Column, SQLModel, Field, DateTime, Relationship, TypeDecorator
+from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, TypeDecorator
 
 
 class TZDateTime(TypeDecorator):
@@ -13,12 +13,12 @@ class TZDateTime(TypeDecorator):
         if value is not None:
             if not value.tzinfo or value.tzinfo.utcoffset(value) is None:
                 raise TypeError("tzinfo is required")
-            value = value.astimezone(timezone.utc).replace(tzinfo=None)
+            value = value.astimezone(UTC).replace(tzinfo=None)
         return value
 
     def process_result_value(self, value, dialect):
         if value is not None:
-            value = value.replace(tzinfo=timezone.utc)
+            value = value.replace(tzinfo=UTC)
         return value
 
 
@@ -27,24 +27,20 @@ class PasswordGroups(SQLModel, table=True):
     group_id: uuid.UUID = Field(primary_key=True, default_factory=uuid.uuid4)
     group_name: str = Field(min_length=1, nullable=False, index=True)
 
-    parent_id: uuid.UUID | None = Field(foreign_key='passwordgroups.group_id', ondelete='CASCADE')
+    parent_id: uuid.UUID | None = Field(foreign_key="passwordgroups.group_id", ondelete="CASCADE")
     is_root: bool = Field()
 
     # Self-referential relationships
-    parent_group: Optional['PasswordGroups'] = Relationship(
-        back_populates='child_groups',
-        sa_relationship_kwargs={'lazy': 'selectin', 'remote_side': 'PasswordGroups.group_id'}
+    parent_group: Optional["PasswordGroups"] = Relationship(
+        back_populates="child_groups",
+        sa_relationship_kwargs={"lazy": "selectin", "remote_side": "PasswordGroups.group_id"},
     )
-    child_groups: list['PasswordGroups'] = Relationship(
-        back_populates='parent_group',
-        sa_relationship_kwargs={'lazy': 'selectin'},
-        passive_deletes='all'
+    child_groups: list["PasswordGroups"] = Relationship(
+        back_populates="parent_group", sa_relationship_kwargs={"lazy": "selectin"}, passive_deletes="all"
     )
-    
-    entries: list['PasswordEntry'] = Relationship(
-        back_populates='group',
-        sa_relationship_kwargs={'lazy': 'selectin'},
-        passive_deletes='all'
+
+    entries: list["PasswordEntry"] = Relationship(
+        back_populates="group", sa_relationship_kwargs={"lazy": "selectin"}, passive_deletes="all"
     )
 
 
@@ -54,20 +50,14 @@ class PasswordEntry(SQLModel, table=True):
 
     username: str = Field(nullable=False)
     password: str = Field(nullable=False)  # keep this encrypted
-    
+
     url: str | None = Field(default=None, nullable=True)
     notes: str = Field(nullable=False)
 
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        sa_column=Column(TZDateTime)
-    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), sa_column=Column(TZDateTime))
 
-    group_id: uuid.UUID = Field(foreign_key='passwordgroups.group_id', ondelete='CASCADE')
-    group: PasswordGroups = Relationship(
-        back_populates='entries',
-        sa_relationship_kwargs={'lazy': 'selectin'}
-    )
+    group_id: uuid.UUID = Field(foreign_key="passwordgroups.group_id", ondelete="CASCADE")
+    group: PasswordGroups = Relationship(back_populates="entries", sa_relationship_kwargs={"lazy": "selectin"})
 
 
 class SyncConfig(SQLModel, table=True):

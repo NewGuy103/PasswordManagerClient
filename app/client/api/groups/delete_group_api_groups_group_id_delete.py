@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any, Optional, Union
+from typing import Any
 
 import httpx
 
@@ -17,17 +17,15 @@ def _get_kwargs(
 ) -> dict[str, Any]:
     _kwargs: dict[str, Any] = {
         "method": "delete",
-        "url": "/api/groups/{group_id}/".format(
-            group_id=group_id,
-        ),
+        "url": f"/api/groups/{group_id}/",
     }
 
     return _kwargs
 
 
 def _parse_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Optional[Union[GenericSuccess, HTTPValidationError]]:
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> GenericSuccess | HTTPValidationError | None:
     if response.status_code == 200:
         response_200 = GenericSuccess.from_dict(response.json())
 
@@ -43,8 +41,8 @@ def _parse_response(
 
 
 def _build_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Response[Union[GenericSuccess, HTTPValidationError]]:
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> Response[GenericSuccess | HTTPValidationError]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -57,7 +55,7 @@ def sync_detailed(
     group_id: UUID,
     *,
     client: AuthenticatedClient,
-) -> Response[Union[GenericSuccess, HTTPValidationError]]:
+) -> Response[GenericSuccess | HTTPValidationError]:
     """Delete Group
 
     Args:
@@ -86,7 +84,7 @@ def sync(
     group_id: UUID,
     *,
     client: AuthenticatedClient,
-) -> Optional[Union[GenericSuccess, HTTPValidationError]]:
+) -> GenericSuccess | HTTPValidationError | None:
     """Delete Group
 
     Args:
@@ -110,7 +108,7 @@ async def asyncio_detailed(
     group_id: UUID,
     *,
     client: AuthenticatedClient,
-) -> Response[Union[GenericSuccess, HTTPValidationError]]:
+) -> Response[GenericSuccess | HTTPValidationError]:
     """Delete Group
 
     Args:
@@ -137,7 +135,7 @@ async def asyncio(
     group_id: UUID,
     *,
     client: AuthenticatedClient,
-) -> Optional[Union[GenericSuccess, HTTPValidationError]]:
+) -> GenericSuccess | HTTPValidationError | None:
     """Delete Group
 
     Args:

@@ -12,114 +12,114 @@ from pydantic import AnyUrl, AwareDatetime, BaseModel, Field, RootModel
 
 
 class AccessTokenErrorCodes(Enum):
-    invalid_request = 'invalid_request'
-    invalid_client = 'invalid_client'
-    invalid_grant = 'invalid_grant'
-    invalid_scope = 'invalid_scope'
-    unauthorized_client = 'unauthorized_client'
-    unsupported_grant_type = 'unsupported_grant_type'
+    invalid_request = "invalid_request"
+    invalid_client = "invalid_client"
+    invalid_grant = "invalid_grant"
+    invalid_scope = "invalid_scope"
+    unauthorized_client = "unauthorized_client"
+    unsupported_grant_type = "unsupported_grant_type"
 
 
 class AccessTokenResponse(BaseModel):
-    access_token: Annotated[str, Field(title='Access Token')]
-    token_type: Annotated[str, Field(title='Token Type')]
-    expires_in: Annotated[int, Field(title='Expires In')]
+    access_token: Annotated[str, Field(title="Access Token")]
+    token_type: Annotated[str, Field(title="Token Type")]
+    expires_in: Annotated[int, Field(title="Expires In")]
 
 
 class BodyRevokeLoginTokenApiAuthRevokePost(BaseModel):
-    token: Annotated[str, Field(title='Token')]
+    token: Annotated[str, Field(title="Token")]
 
 
 class BodyTokenLoginApiAuthTokenPost(BaseModel):
-    grant_type: Annotated[str, Field(pattern='^password$', title='Grant Type')]
-    username: Annotated[str, Field(title='Username')]
-    password: Annotated[str, Field(title='Password')]
-    scope: Annotated[str | None, Field(title='Scope')] = ''
-    client_id: Annotated[str | None, Field(title='Client Id')] = None
-    client_secret: Annotated[str | None, Field(title='Client Secret')] = None
+    grant_type: Annotated[str, Field(pattern="^password$", title="Grant Type")]
+    username: Annotated[str, Field(title="Username")]
+    password: Annotated[str, Field(title="Password")]
+    scope: Annotated[str | None, Field(title="Scope")] = ""
+    client_id: Annotated[str | None, Field(title="Client Id")] = None
+    client_secret: Annotated[str | None, Field(title="Client Secret")] = None
 
 
 class Url(RootModel[AnyUrl]):
-    root: Annotated[AnyUrl, Field(title='Url')]
+    root: Annotated[AnyUrl, Field(title="Url")]
 
 
 class EntryCreate(BaseModel):
-    title: Annotated[str, Field(title='Title')]
-    username: Annotated[str, Field(title='Username')]
-    password: Annotated[str, Field(title='Password')]
-    url: Annotated[Url | None, Field(title='Url')] = None
-    notes: Annotated[str, Field(title='Notes')]
+    title: Annotated[str, Field(title="Title")]
+    username: Annotated[str, Field(title="Username")]
+    password: Annotated[str, Field(title="Password")]
+    url: Annotated[Url | None, Field(title="Url")] = None
+    notes: Annotated[str, Field(title="Notes")]
 
 
 class EntryPublicGet(BaseModel):
-    title: Annotated[str, Field(title='Title')]
-    username: Annotated[str, Field(title='Username')]
-    password: Annotated[str, Field(title='Password')]
-    url: Annotated[Url | None, Field(title='Url')] = None
-    notes: Annotated[str, Field(title='Notes')]
-    entry_id: Annotated[UUID, Field(title='Entry Id')]
-    group_id: Annotated[UUID, Field(title='Group Id')]
-    created_at: Annotated[AwareDatetime, Field(title='Created At')]
+    title: Annotated[str, Field(title="Title")]
+    username: Annotated[str, Field(title="Username")]
+    password: Annotated[str, Field(title="Password")]
+    url: Annotated[Url | None, Field(title="Url")] = None
+    notes: Annotated[str, Field(title="Notes")]
+    entry_id: Annotated[UUID, Field(title="Entry Id")]
+    group_id: Annotated[UUID, Field(title="Group Id")]
+    created_at: Annotated[AwareDatetime, Field(title="Created At")]
 
 
 class EntryUpdate(BaseModel):
-    title: Annotated[str, Field(title='Title')]
-    username: Annotated[str, Field(title='Username')]
-    password: Annotated[str, Field(title='Password')]
-    url: Annotated[Url | None, Field(title='Url')] = None
-    notes: Annotated[str, Field(title='Notes')]
+    title: Annotated[str, Field(title="Title")]
+    username: Annotated[str, Field(title="Username")]
+    password: Annotated[str, Field(title="Password")]
+    url: Annotated[Url | None, Field(title="Url")] = None
+    notes: Annotated[str, Field(title="Notes")]
 
 
 class GenericSuccess(BaseModel):
-    success: Annotated[Literal[True], Field(title='Success')]
+    success: Annotated[Literal[True], Field(title="Success")]
 
 
 class GroupCreate(BaseModel):
-    group_name: Annotated[str, Field(min_length=1, title='Group Name')]
-    parent_id: Annotated[UUID, Field(title='Parent Id')]
+    group_name: Annotated[str, Field(min_length=1, title="Group Name")]
+    parent_id: Annotated[UUID, Field(title="Parent Id")]
 
 
 class GroupMove(BaseModel):
-    new_parent_id: Annotated[UUID, Field(title='New Parent Id')]
+    new_parent_id: Annotated[UUID, Field(title="New Parent Id")]
 
 
 class GroupPublicChildren(BaseModel):
-    group_name: Annotated[str, Field(min_length=1, title='Group Name')]
-    parent_id: Annotated[UUID, Field(title='Parent Id')]
-    group_id: Annotated[UUID, Field(title='Group Id')]
+    group_name: Annotated[str, Field(min_length=1, title="Group Name")]
+    parent_id: Annotated[UUID, Field(title="Parent Id")]
+    group_id: Annotated[UUID, Field(title="Group Id")]
 
 
 class GroupPublicGet(BaseModel):
-    group_name: Annotated[str, Field(min_length=1, title='Group Name')]
-    parent_id: Annotated[UUID | None, Field(title='Parent Id')] = None
-    group_id: Annotated[UUID, Field(title='Group Id')]
-    child_groups: Annotated[list[GroupPublicChildren], Field(title='Child Groups')]
+    group_name: Annotated[str, Field(min_length=1, title="Group Name")]
+    parent_id: Annotated[UUID | None, Field(title="Parent Id")] = None
+    group_id: Annotated[UUID, Field(title="Group Id")]
+    child_groups: Annotated[list[GroupPublicChildren], Field(title="Child Groups")]
 
 
 class GroupPublicModify(BaseModel):
-    group_name: Annotated[str, Field(min_length=1, title='Group Name')]
-    parent_id: Annotated[UUID | None, Field(title='Parent Id')] = None
-    group_id: Annotated[UUID, Field(title='Group Id')]
+    group_name: Annotated[str, Field(min_length=1, title="Group Name")]
+    parent_id: Annotated[UUID | None, Field(title="Parent Id")] = None
+    group_id: Annotated[UUID, Field(title="Group Id")]
 
 
 class GroupRename(BaseModel):
-    new_name: Annotated[str, Field(min_length=1, title='New Name')]
+    new_name: Annotated[str, Field(min_length=1, title="New Name")]
 
 
 class UserInfoPublic(BaseModel):
-    username: Annotated[str, Field(title='Username')]
+    username: Annotated[str, Field(title="Username")]
 
 
 class ValidationError(BaseModel):
-    loc: Annotated[list[str | int], Field(title='Location')]
-    msg: Annotated[str, Field(title='Message')]
-    type: Annotated[str, Field(title='Error Type')]
+    loc: Annotated[list[str | int], Field(title="Location")]
+    msg: Annotated[str, Field(title="Message")]
+    type: Annotated[str, Field(title="Error Type")]
 
 
 class AccessTokenError(BaseModel):
     error: AccessTokenErrorCodes
-    error_description: Annotated[str, Field(title='Error Description')]
+    error_description: Annotated[str, Field(title="Error Description")]
 
 
 class HTTPValidationError(BaseModel):
-    detail: Annotated[list[ValidationError] | None, Field(title='Detail')] = None
+    detail: Annotated[list[ValidationError] | None, Field(title="Detail")] = None

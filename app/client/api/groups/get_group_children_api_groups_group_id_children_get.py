@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any, Optional, Union
+from typing import Any
 
 import httpx
 
@@ -17,17 +17,15 @@ def _get_kwargs(
 ) -> dict[str, Any]:
     _kwargs: dict[str, Any] = {
         "method": "get",
-        "url": "/api/groups/{group_id}/children".format(
-            group_id=group_id,
-        ),
+        "url": f"/api/groups/{group_id}/children",
     }
 
     return _kwargs
 
 
 def _parse_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Optional[Union[GroupPublicGet, HTTPValidationError]]:
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> GroupPublicGet | HTTPValidationError | None:
     if response.status_code == 200:
         response_200 = GroupPublicGet.from_dict(response.json())
 
@@ -43,8 +41,8 @@ def _parse_response(
 
 
 def _build_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Response[Union[GroupPublicGet, HTTPValidationError]]:
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> Response[GroupPublicGet | HTTPValidationError]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -57,7 +55,7 @@ def sync_detailed(
     group_id: UUID,
     *,
     client: AuthenticatedClient,
-) -> Response[Union[GroupPublicGet, HTTPValidationError]]:
+) -> Response[GroupPublicGet | HTTPValidationError]:
     """Get Group Children
 
     Args:
@@ -86,7 +84,7 @@ def sync(
     group_id: UUID,
     *,
     client: AuthenticatedClient,
-) -> Optional[Union[GroupPublicGet, HTTPValidationError]]:
+) -> GroupPublicGet | HTTPValidationError | None:
     """Get Group Children
 
     Args:
@@ -110,7 +108,7 @@ async def asyncio_detailed(
     group_id: UUID,
     *,
     client: AuthenticatedClient,
-) -> Response[Union[GroupPublicGet, HTTPValidationError]]:
+) -> Response[GroupPublicGet | HTTPValidationError]:
     """Get Group Children
 
     Args:
@@ -137,7 +135,7 @@ async def asyncio(
     group_id: UUID,
     *,
     client: AuthenticatedClient,
-) -> Optional[Union[GroupPublicGet, HTTPValidationError]]:
+) -> GroupPublicGet | HTTPValidationError | None:
     """Get Group Children
 
     Args:

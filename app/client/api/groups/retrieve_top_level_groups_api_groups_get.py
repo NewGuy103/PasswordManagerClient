@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any, Optional, Union
+from typing import Any
 
 import httpx
 
@@ -19,9 +19,7 @@ def _get_kwargs() -> dict[str, Any]:
     return _kwargs
 
 
-def _parse_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Optional[GroupPublicGet]:
+def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> GroupPublicGet | None:
     if response.status_code == 200:
         response_200 = GroupPublicGet.from_dict(response.json())
 
@@ -32,9 +30,7 @@ def _parse_response(
         return None
 
 
-def _build_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Response[GroupPublicGet]:
+def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[GroupPublicGet]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -69,7 +65,7 @@ def sync_detailed(
 def sync(
     *,
     client: AuthenticatedClient,
-) -> Optional[GroupPublicGet]:
+) -> GroupPublicGet | None:
     """Retrieve Top Level Groups
 
     Raises:
@@ -109,7 +105,7 @@ async def asyncio_detailed(
 async def asyncio(
     *,
     client: AuthenticatedClient,
-) -> Optional[GroupPublicGet]:
+) -> GroupPublicGet | None:
     """Retrieve Top Level Groups
 
     Raises:

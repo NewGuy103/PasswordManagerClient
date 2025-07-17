@@ -9,12 +9,12 @@ from pydantic_settings import BaseSettings, JsonConfigSettingsSource, PydanticBa
 from .version import __version__
 
 dirs = PlatformDirs("passwordmanager-client", "newguy103", version=__version__)
-logger: logging.Logger = logging.getLogger('passwordmanager-client')
+logger: logging.Logger = logging.getLogger("passwordmanager-client")
 
 
 class AppFilePaths(BaseModel):
-    log_file: Path = Path(dirs.user_config_dir) / 'client.log'
-    config_file: Path = Path(dirs.user_config_dir) / 'config.json'
+    log_file: Path = Path(dirs.user_config_dir) / "client.log"
+    config_file: Path = Path(dirs.user_config_dir) / "config.json"
 
 
 app_file_paths = AppFilePaths()
@@ -27,8 +27,8 @@ def setup_logger(level: int):
     logger.setLevel(level)
 
     formatter: logging.Formatter = logging.Formatter(
-        '[%(name)s]: [%(module)s | %(funcName)s] - [%(asctime)s] - [%(levelname)s] - %(message)s', 
-        datefmt='%Y-%m-%d %H:%M:%S'
+        "[%(name)s]: [%(module)s | %(funcName)s] - [%(asctime)s] - [%(levelname)s] - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     stream_handler: logging.StreamHandler = logging.StreamHandler()
@@ -67,5 +67,5 @@ class AppSettings(BaseSettings):
         return (JsonConfigSettingsSource(settings_cls),)
 
     def save_settings(self):
-        with open(app_file_paths.config_file, 'w') as file:
+        with open(app_file_paths.config_file, "w") as file:
             file.write(self.model_dump_json(indent=4))

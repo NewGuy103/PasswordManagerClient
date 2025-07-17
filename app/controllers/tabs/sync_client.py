@@ -26,7 +26,7 @@ class SyncClientLoader(QObject):
     clientLoaded = Signal(SyncClient)
     loadWithoutSync = Signal()
 
-    def __init__(self, app_parent: 'AppsController'):
+    def __init__(self, app_parent: "AppsController"):
         super().__init__(app_parent)
 
         self.mw_parent = app_parent.mw_parent
@@ -50,22 +50,19 @@ class SyncClientLoader(QObject):
             self.ui.statusbar.showMessage("SyncClient - Sync is disabled, continuing...", timeout=5000)
             return
 
-        access_token = keyring.get_password(
-            'newguy103-passwordmanager', 
-            f"{data.username}={str(data.server_url)}"
-        )
+        access_token = keyring.get_password("newguy103-passwordmanager", f"{data.username}={str(data.server_url)}")
         saved_sync_info = SavedSyncInfo(
             username=data.username,
             server_url=data.server_url,
             access_token=access_token,
-            sync_enabled=data.sync_enabled
+            sync_enabled=data.sync_enabled,
         )
 
         self.sync_client = SyncClient()
         func = partial(self.sync_client.setup, saved_sync_info)
 
         make_worker_thread(func, self.sync_client_after_setup, self.worker_exc_received)
-    
+
     @Slot(None)
     def sync_client_after_setup(self):
         self.clientLoaded.emit(self.sync_client)
@@ -73,14 +70,14 @@ class SyncClientLoader(QObject):
 
     @Slot(Exception)
     def worker_exc_received(self, exc: Exception):
-        tb: str = ''.join(traceback.format_exception(exc, limit=1))
+        tb: str = "".join(traceback.format_exception(exc, limit=1))
 
         QMessageBox.warning(
             self.mw_parent,
             "PasswordManager - Client",
             f"Server sync cannot be loaded, falling back to no sync. Traceback:\n\n{tb}",
             buttons=QMessageBox.StandardButton.Ok,
-            defaultButton=QMessageBox.StandardButton.Ok
+            defaultButton=QMessageBox.StandardButton.Ok,
         )
         logger.error("Failed to setup sync client due to exception:", exc_info=exc)
         self.loadWithoutSync.emit()

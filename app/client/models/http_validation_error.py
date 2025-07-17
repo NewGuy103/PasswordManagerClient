@@ -6,7 +6,6 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-from typing import Union
 
 if TYPE_CHECKING:
     from ..models.validation_error import ValidationError
@@ -17,11 +16,11 @@ T = TypeVar("T", bound="HTTPValidationError")
 
 @_attrs_define
 class HTTPValidationError:
-    detail: Union[Unset, list["ValidationError"]] = UNSET
+    detail: Unset | list["ValidationError"] = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        detail: Union[Unset, list[dict[str, Any]]] = UNSET
+        detail: Unset | list[dict[str, Any]] = UNSET
         if not isinstance(self.detail, Unset):
             detail = []
             for detail_item_data in self.detail:

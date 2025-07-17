@@ -6,7 +6,6 @@ from attrs import field as _attrs_field
 
 
 from typing import cast
-from typing import Union
 
 
 T = TypeVar("T", bound="ValidationError")
@@ -14,7 +13,7 @@ T = TypeVar("T", bound="ValidationError")
 
 @_attrs_define
 class ValidationError:
-    loc: list[Union[int, str]]
+    loc: list[int | str]
     msg: str
     type_: str
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -22,7 +21,7 @@ class ValidationError:
     def to_dict(self) -> dict[str, Any]:
         loc = []
         for loc_item_data in self.loc:
-            loc_item: Union[int, str]
+            loc_item: int | str
             loc_item = loc_item_data
             loc.append(loc_item)
 
@@ -49,8 +48,8 @@ class ValidationError:
         _loc = d.pop("loc")
         for loc_item_data in _loc:
 
-            def _parse_loc_item(data: object) -> Union[int, str]:
-                return cast(Union[int, str], data)
+            def _parse_loc_item(data: object) -> int | str:
+                return cast(int | str, data)
 
             loc_item = _parse_loc_item(loc_item_data)
 
