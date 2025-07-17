@@ -1,18 +1,14 @@
-# Clean up and separate sync functionality
+# Implement most of server sync functionality
 
 **Version**: v0.1.0
 
-**Date:** 07/07/2025
+**Date:** 17/07/2025
 
 ## Additions
 
-**`/pyproject.toml`**:
+**`/app/models.py`**:
 
-* Added `datamodel-code-generator[http]` as a dev dependency to generate the sync client Pydantic models.
-
-**`/scripts/generate-client.sh`**:
-
-* Added `datamodel-codegen` as a step in generating the client.
+* Added `entry_id` to `EditedEntryWithGroup` as it's the simplest way to keep track of the existing entry.
 
 **`/app/serversync/`**:
 
@@ -24,20 +20,16 @@
 
 ## Changes
 
-**`/app/localdb/synced_db.py`**:
-
-* Removed `SyncedDatabase` implementation to separate the sync and the database.
-
 **`/app/controllers/apps.py`**:
 
-* Changed to handle disabling/enabling and switching to tabs directly instead of letting the controllers do it.
+* Changed to disable the databases tab while waiting for server sync to load.
+* No longer switches to the settings tab.
 
 **`/app/controllers/tabs/databases.py`**:
 
-* Removed code to initialize the sync client and moved it to `sync_client.py`.
+* Many changes to how it handles the local database and server sync, needs a lot of cleanup.
 
 ## Misc
 
-* Separating the network code from the database code will make it easier to track unsynced changes
-  and syncing with the server by allowing the controller to know what is happening.
-* Actually implementing the sync code will take a while so this is only one step.
+* Will need a lot of cleanup to make sure the sync code doesn't break or become hard to maintain,
+  this will also make it easier to implement new features.

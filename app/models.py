@@ -21,6 +21,7 @@ class EditedPasswordEntryInfo(PasswordEntryBase):
 
 
 class EditedEntryWithGroup(EditedPasswordEntryInfo):
+    entry_id: uuid.UUID
     group_id: uuid.UUID
 
 

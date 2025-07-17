@@ -44,11 +44,10 @@ class AppsController(QObject):
     
     @Slot()
     def wait_for_sync_load(self):
-        self.ui.appTabWidget.setTabEnabled(0, False)  # disable databases tab
-        self.ui.appTabWidget.setTabEnabled(1, False)  # disable passwords tab
+        self.ui.appTabWidget.setTabEnabled(1, False)
 
-        # TODO: Add a loading screen/stackedwidget so it doesnt throw you directly into the settings tab
-        self.ui.appTabWidget.setCurrentIndex(2)  # settings
+        # Disable while waiting for sync load to complete
+        self.ui.databasesTab.setDisabled(True)
 
     @Slot()
     def enable_passwords_tab(self):

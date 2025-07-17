@@ -18,12 +18,14 @@ from ...ui.password_entry_info_dialog import Ui_PasswordEntryInfoDialog
 from ...ui.add_password_group_dialog import Ui_AddPasswordGroupDialog
 from ...serversync.client import SyncClient
 from ...workers import make_worker_thread
+from ...serversync.models import EntryPublicGet, GenericSuccess, GroupPublicModify
+
 
 if typing.TYPE_CHECKING:
     from ..apps import AppsController
 
 
-# TODO: Cleanup this module
+# TODO: Cleanup this module and make it readable
 logger: logging.Logger = logging.getLogger("passwordmanager-client")
 
 
@@ -104,17 +106,24 @@ class PasswordEntriesTableModel(QAbstractTableModel):
         self.layoutChanged.emit()
     
     def delete_entry(self, index: QModelIndex):
+        if not index.isValid():
+            return
+        
         del self._item_data[index.row()]
         del self._display_data[index.row()]
 
         self.layoutChanged.emit()
     
-    def update_entry(self, index: QModelIndex, data: PasswordEntryData):
-        if not index.isValid():
+    def update_entry(self, data: PasswordEntryData):
+        entries = [item for item in self._item_data if data.entry_id == item.entry_id]
+        if not entries:
+            logger.warning("Entry ID '%s' not in model", data.entry_id)
             return
         
+        entry = entries[0]
+        row = self._item_data.index(entry)
+
         display_data = [data.title, data.username, data.url, data.created_at]
-        row = index.row()
 
         self._item_data[row] = data
         self._display_data[row] = display_data
@@ -125,7 +134,10 @@ class PasswordEntriesTableModel(QAbstractTableModel):
         self.dataChanged.emit(top, bottom)
 
 
+# TODO: Make this ideally wait for the client to either load or be disabled
 class PasswordsTabController(QObject):
+    useClient = Signal(SyncClient)
+
     def __init__(self, app_parent: 'AppsController'):
         super().__init__(app_parent)
 
@@ -149,6 +161,9 @@ class PasswordsTabController(QObject):
     @Slot(SyncClient)
     def client_loaded(self, client: SyncClient):
         self.client = client
+        self.useClient.emit(self.client)
+
+        logger.debug("Sent signal to use sync client")
     
     @Slot(GroupParentData)
     def setup(self, data: GroupParentData):
@@ -162,6 +177,9 @@ class PasswordsTabController(QObject):
         self.groups_ctrl.groupChanged.connect(self.entries_ctrl.reload_entries)
         
         self.entries_ctrl.entryChanged.connect(self.entry_info_ctrl.entry_changed)
+        self.useClient.connect(self.entries_ctrl.client_loaded)
+
+        self.useClient.connect(self.groups_ctrl.client_loaded)
         self.ui.statusbar.showMessage('Passwords - Top-level entries loaded', timeout=5000)
 
     @Slot(Exception)
@@ -178,6 +196,7 @@ class PasswordsTabController(QObject):
         logger.error("Exception when running worker:", exc_info=exc)
 
 
+# TODO: Keep track of data created while server sync is disabled to make it easier to sync
 class PasswordEntriesController(QObject):
     entryChanged = Signal(PasswordEntryData)
 
@@ -190,17 +209,15 @@ class PasswordEntriesController(QObject):
         self.ui = self.mw_parent.ui
         self.db = pw_parent.db
 
-        self.client = pw_parent.client
-
         self.entries_model = PasswordEntriesTableModel(parent=self)
         self.ui.passwordEntriesTableView.setModel(self.entries_model)
 
         self.entry_info_dialog = PasswordEntryInfoDialog(self)
+        self.data_ctrl: EntriesDataController = EntriesDataController(self)
 
-        # TODO: Temp-fix, refactor this to be more clean
-        self._entry_needs_update: tuple[QModelIndex, PasswordEntryData] | None = None
+        self.client: SyncClient | None = None
         self.setup()
-        
+
     def setup(self):
         header = self.ui.passwordEntriesTableView.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -211,26 +228,34 @@ class PasswordEntriesController(QObject):
         self.ui.passwordEntriesTableView.customContextMenuRequested.connect(self.context_menu_event)
 
         self.ui.passwordEntriesTableView.clicked.connect(self.tableview_clicked)
-        self.entry_info_dialog.addEntryRequested.connect(self.add_entry_dialog_accepted)
+        self.entry_info_dialog.addEntryRequested.connect(self.data_ctrl.add_entry_dialog_accepted)
 
-        self.entry_info_dialog.editEntryRequested.connect(self.edit_entry_dialog_accepted)
+        self.entry_info_dialog.editEntryRequested.connect(self.data_ctrl.edit_entry_dialog_accepted)
+
+        self.data_ctrl.addEntryComplete.connect(self.model_add_password_entry)
+        self.data_ctrl.deleteEntryComplete.connect(self.model_delete_password_entry)
+
+        self.data_ctrl.editEntryComplete.connect(self.model_edit_password_entry)
+        self.data_ctrl.entriesReloaded.connect(self.model_reload_entries)
     
-    @Slot()
+    @Slot(SyncClient)
+    def client_loaded(self, client: SyncClient):
+        self.client = client
+        self.data_ctrl.client_loaded(client)
+    
+    @Slot(QModelIndex)
     def tableview_clicked(self, index: QModelIndex):
         data: PasswordEntryData = index.data(Qt.ItemDataRole.UserRole)
         self.entryChanged.emit(data)
     
-    @Slot()
+    @Slot(GroupParentData)
     def reload_entries(self, group: GroupParentData):
         self.current_group = group
-        func = partial(self.db.entries.get_entries_by_group, group.group_id)
-
-        make_worker_thread(func, self.model_reload_entries, self.pw_parent.worker_exc_received)
-        logger.info("Reloading entries for group '%s'", group.group_name)
-
+        self.data_ctrl.group_changed(group)
+        
         self.ui.statusbar.showMessage(f"Passwords - Reloading entries for group '{group.group_name}'", timeout=5000)
     
-    @Slot()
+    @Slot(list)
     def model_reload_entries(self, entries: list[PasswordEntryData]):
         logger.info("Fetched %d entries", len(entries))
         self.entries_model.load_entries(entries)
@@ -279,15 +304,7 @@ class PasswordEntriesController(QObject):
         self.entry_info_dialog.reset_data(emit_as=EmitDialogInfoAs.add)
         self.entry_info_dialog.show()
 
-    @Slot(EditedPasswordEntryInfo)
-    def add_entry_dialog_accepted(self, data: EditedPasswordEntryInfo):
-        func = partial(
-            self.db.entries.create_entry, self.current_group.group_id,
-            data
-        )
-        make_worker_thread(func, self.model_add_password_entry, self.pw_parent.worker_exc_received)
-
-    @Slot()
+    @Slot(PasswordEntryData)
     def model_add_password_entry(self, entry: PasswordEntryData):
         logger.info("Adding entry '%s'", entry.title)
         self.ui.statusbar.showMessage(f"Passwords - Adding entry '{entry.title}'", timeout=5000)
@@ -304,16 +321,15 @@ class PasswordEntriesController(QObject):
         )
         if btn == QMessageBox.StandardButton.No:
             return
-        
-        func = partial(self.db.entries.delete_entry_by_id, item.entry_id, item.group_id)
-        make_worker_thread(func, self.model_delete_password_entry, self.pw_parent.worker_exc_received)
+
+        logger.info("Deleting entry '%s'", item.title)
+        self.ui.statusbar.showMessage(f"Passwords - Deleting entry '{item.title}'", timeout=5000)
 
         self.entries_model.delete_entry(index)
         self.ui.passwordEntriesTableView.clearSelection()
 
-        logger.info("Deleting entry '%s'", item.title)
-        self.ui.statusbar.showMessage(f"Passwords - Deleting entry '{item.title}'", timeout=5000)
-    
+        self.data_ctrl.delete_password_entry(item)
+
     @Slot(bool)
     def model_delete_password_entry(self, success: bool):
         self.ui.statusbar.showMessage("Passwords - Entry deleted")
@@ -322,32 +338,26 @@ class PasswordEntriesController(QObject):
         self.entry_info_dialog.reset_data(emit_as=EmitDialogInfoAs.edit)
         self.entry_info_dialog.set_existing_data(item)
 
-        self._entry_needs_update = (index, item)
         self.entry_info_dialog.show()
 
-    @Slot(EditedEntryWithGroup)
-    def edit_entry_dialog_accepted(self, data: EditedEntryWithGroup):
-        # TODO: Tempfix to get it working, clean up to be safer in the case of multiple updated entries
-        assert self._entry_needs_update is not None
-
-        func = partial(
-            self.db.entries.update_entry_data,
-            self._entry_needs_update[1].entry_id, data
-        )
-        make_worker_thread(func, self.model_edit_password_entry, self.pw_parent.worker_exc_received)
-
-    @Slot()
+    @Slot(PasswordEntryData)
     def model_edit_password_entry(self, entry: PasswordEntryData):
         logger.info("Updating entry '%s'", entry.title)
         self.ui.statusbar.showMessage(f"Passwords - Updating entry '{entry.title}'", timeout=5000)
 
-        # TODO: Tempfix to get it working, clean up to be safer in the case of multiple updated entries
-        assert self._entry_needs_update is not None
+        self.entries_model.update_entry(entry)
 
-        self.entries_model.update_entry(self._entry_needs_update[0], entry)
-        self._entry_needs_update = None
+        indexes = self.ui.passwordEntriesTableView.selectedIndexes()
+        if not indexes:
+            return
+        
+        index = indexes[0]
+        if index.data(Qt.ItemDataRole.UserRole) == entry:
+            logger.debug("Entry changed is the currently selected entry, updating")
+            self.entryChanged.emit(entry)
 
 
+# TODO: Ensure when setting up sync for the first time, root group always matches the server
 class PasswordGroupsItemController(QObject):
     groupChanged = Signal(GroupParentData)
 
@@ -360,11 +370,14 @@ class PasswordGroupsItemController(QObject):
         self.ui = self.mw_parent.ui
         self.db = pw_parent.db
 
-        self.client = pw_parent.client
+        self.add_group_dialog = AddPasswordGroupDialog(self)
         self.worker_exc_received = pw_parent.worker_exc_received
 
         self.groups_model = QStandardItemModel(parent=self)
         self.current_group: GroupParentData = None
+
+        self.data_ctrl: GroupsDataController = GroupsDataController(self)
+        self.client: SyncClient | None = None
 
         # TODO: Refactor this if needed
         self.root_item: QStandardItem = None
@@ -372,6 +385,11 @@ class PasswordGroupsItemController(QObject):
 
         self.setup()
 
+    @Slot(SyncClient)
+    def client_loaded(self, client: SyncClient):
+        self.client = client
+        self.data_ctrl.client_loaded(client)
+    
     def setup(self):
         self.ui.passwordGroupsTreeView.setModel(self.groups_model)
 
@@ -400,6 +418,10 @@ class PasswordGroupsItemController(QObject):
         self.ui.passwordGroupsTreeView.expandAll()
         self.ui.passwordGroupsTreeView.resizeColumnToContents(0)
 
+        self.add_group_dialog.dataComplete.connect(self.data_ctrl.add_password_group_accepted)
+        self.data_ctrl.addGroupComplete.connect(self.add_password_group_complete)
+
+        # TODO: Make this use server sync too
         make_worker_thread(
             self.db.groups.get_children_of_root, self.after_get_root_group,
             self.worker_exc_received
@@ -417,20 +439,44 @@ class PasswordGroupsItemController(QObject):
         parentItem.appendRow(self.root_item)
 
         self._items[root_group.group_id] = self.root_item
-
         self.groups_model.setHeaderData(0, Qt.Orientation.Horizontal, "Groups")
-        self.load_groups(root_group, parent_item=None)
 
+        func = partial(
+            self.load_groups, root_group,
+            parent_item=None
+        )
+        make_worker_thread(func, self.all_groups_loaded, self.worker_exc_received)
+
+    @Slot()
+    def all_groups_loaded(self):
+        root_group = self.root_item.data(Qt.ItemDataRole.UserRole)
         self.current_group = root_group
+
+        self.data_ctrl.group_changed(root_group)
         self.groupChanged.emit(root_group)
 
         self.ui.statusbar.showMessage("Passwords - Loaded top-level and child groups", timeout=5000)
     
     def load_groups(self, parent_group: GroupParentData, parent_item: QStandardItem | None = None):
         """Queries the database, use this in a worker thread."""
-        children = self.db.groups.get_children_of_group(parent_group.group_id)
+        if self.client:
+            net_children = self.client.groups.get_children_of_group(parent_group.group_id)
+            db_children = self.db.groups.get_children_of_group(parent_group.group_id)
+
+            len_net_children = len(net_children)
+            len_db_children = len(db_children)
+            if len_net_children != len_db_children:
+                logger.error("Expected %d groups locally, instead got %d groups", len_net_children, len_db_children)
+                raise ValueError("Server groups do not match local groups")
+            
+            ta = TypeAdapter(list[GroupParentData])
+            children = ta.validate_python(net_children)
+        else:
+            children = self.db.groups.get_children_of_group(parent_group.group_id)
+        
         parentItem = parent_item or self.root_item
 
+        # TODO: Improve how this is loaded, it loads recusively and can lag
         for group in children.child_groups:
             item = self.append_group(group, parentItem)
             self._items[group.group_id] = item
@@ -464,6 +510,7 @@ class PasswordGroupsItemController(QObject):
         data: GroupParentData = index.data(Qt.ItemDataRole.UserRole)
         self.current_group = data
         
+        self.data_ctrl.group_changed(data)
         self.groupChanged.emit(data)
 
     @Slot()
@@ -498,20 +545,8 @@ class PasswordGroupsItemController(QObject):
     
     @Slot()
     def add_password_group(self):
-        dialog = AddPasswordGroupDialog(self)
-
-        @Slot(AddPasswordGroup)
-        def dialog_accepted(data: AddPasswordGroup):
-            func = partial(
-                self.db.groups.create_group,
-                data.group_name, self.current_group.group_id
-            )
-            make_worker_thread(func, self.add_password_group_complete, self.worker_exc_received)
-        
-        dialog.dataComplete.connect(dialog_accepted)
-        dialog.exec()
-
-        dialog.deleteLater()
+        self.add_group_dialog.reset_data()
+        self.add_group_dialog.show()
     
     @Slot()
     def add_password_group_complete(self, data: GroupParentData):
@@ -541,12 +576,8 @@ class PasswordGroupsItemController(QObject):
         )
         if btn == QMessageBox.StandardButton.No:
             return
-        
-        func = partial(
-            self.db.groups.delete_group,
-            data.group_id
-        )
 
+        # TODO: Clean this up and figure out a better way to cleanup groups and their children
         @Slot()
         def delete_complete():
             parent_index = index.parent()
@@ -566,8 +597,27 @@ class PasswordGroupsItemController(QObject):
                 del self._items[group.group_id]
 
             self.ui.passwordGroupsTreeView.clearSelection()
+
+        @Slot()
+        def sync_delete_complete(data: GenericSuccess):
+            func = partial(
+                self.db.groups.delete_group,
+                data.group_id
+            )
+            make_worker_thread(func, delete_complete, self.worker_exc_received)
         
-        make_worker_thread(func, delete_complete, self.worker_exc_received)
+        if self.client:
+            net_func = partial(
+                self.client.groups.delete_group,
+                data.group_id
+            )
+            make_worker_thread(net_func, sync_delete_complete, self.worker_exc_received)
+        else:
+            func = partial(
+                self.db.groups.delete_group,
+                data.group_id
+            )
+            make_worker_thread(func, delete_complete, self.worker_exc_received)
 
 
 class PasswordEntryInfoController(QObject):
@@ -671,7 +721,11 @@ class PasswordEntryInfoDialog(QDialog):
         elif self._emit_as == EmitDialogInfoAs.edit:
             assert self._data is not None, "Edit data is invalid"
 
-            with_group_data = EditedEntryWithGroup(group_id=self._data.group_id, **data.model_dump())
+            with_group_data = EditedEntryWithGroup(
+                group_id=self._data.group_id, 
+                entry_id=self._data.entry_id,
+                **data.model_dump()
+            )
             self.editEntryRequested.emit(with_group_data)
         
         return super().accept()
@@ -704,6 +758,9 @@ class AddPasswordGroupDialog(QDialog):
         self.ui.groupNameLineEdit.textEdited.connect(self.groupname_text_edited)
         self.ui.dialogButtonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(False)
     
+    def reset_data(self):
+        self.ui.groupNameLineEdit.setText('')
+    
     def accept(self):
         group_name = self.ui.groupNameLineEdit.text()
         data = AddPasswordGroup(
@@ -721,3 +778,209 @@ class AddPasswordGroupDialog(QDialog):
             btn.setEnabled(False)
         else:
             btn.setEnabled(True)
+
+
+# TODO: Refactor to make it so that istead of storing all CRUD opts in one class,
+# its split into many classes with either add, delete, edit or read
+class EntriesDataController(QObject):
+    addEntryComplete = Signal(PasswordEntryData)
+    deleteEntryComplete = Signal(bool)
+
+    editEntryComplete = Signal(PasswordEntryData)
+    entriesReloaded = Signal(list)  # list[PasswordEntryData]
+
+    def __init__(self, parent: PasswordEntriesController):
+        super().__init__(parent)
+
+        self.mw_parent = parent.mw_parent
+        self.ctrl_parent = parent
+
+        self.ui = self.mw_parent.ui
+
+        self.db: MainDatabase = parent.db
+        self.client: SyncClient | None = None
+
+        self.worker_exc_received = self.ctrl_parent.pw_parent.worker_exc_received
+    
+    def client_loaded(self, client: SyncClient):
+        self.client = client
+
+    @Slot(GroupParentData)
+    def group_changed(self, group: GroupParentData):
+        self.current_group = group
+        func = partial(self.db.entries.get_entries_by_group, group.group_id)
+
+        make_worker_thread(func, self.entries_reloaded, self.worker_exc_received)
+        logger.info("Reloading entries for group '%s'", group.group_name)
+
+    @Slot(list)
+    def entries_reloaded(self, entries: list[PasswordEntryData]):
+        self.entriesReloaded.emit(entries)
+    
+    @Slot(EditedPasswordEntryInfo)
+    def add_entry_dialog_accepted(self, data: EditedPasswordEntryInfo):
+        if self.client:
+            net_func = partial(
+                self.client.entries.create_entry,
+                self.current_group.group_id, data
+            )
+            make_worker_thread(net_func, self.sync_add_password_entry, self.worker_exc_received)
+
+            logger.info("Sending request to add entry...")
+            self.ui.statusbar.showMessage("Passwords - Sent request to add password entry", timeout=5000)
+
+            return
+
+        func = partial(
+            self.db.entries.create_entry,
+            self.current_group.group_id, data
+        )
+        make_worker_thread(func, self.add_complete, self.worker_exc_received)
+
+    @Slot(EntryPublicGet)
+    def sync_add_password_entry(self, entry: EntryPublicGet):
+        url_or_none = entry.url.model_dump() if entry.url is not None else None
+
+        data = EditedPasswordEntryInfo(
+            title=entry.title, username=entry.username,
+            password=entry.password, url=url_or_none,
+            notes=entry.notes
+        )
+        func = partial(
+            self.db.entries.create_entry, entry.group_id,
+            data, entry_id=entry.entry_id, created_at=entry.created_at
+        )
+        make_worker_thread(func, self.add_complete, self.worker_exc_received)
+        logger.info("Adding entry to local database")
+    
+    @Slot(PasswordEntryData)
+    def add_complete(self, entry: PasswordEntryData):
+        self.addEntryComplete.emit(entry)
+
+    def delete_password_entry(self, item: PasswordEntryData):
+        @Slot(GenericSuccess)
+        def sync_delete_password_entry(data: GenericSuccess):
+            func = partial(self.db.entries.delete_entry_by_id, item.entry_id, item.group_id)
+            make_worker_thread(func, model_delete_password_entry, self.worker_exc_received)
+
+        @Slot(GenericSuccess)
+        def model_delete_password_entry(success: bool):
+            self.deleteEntryComplete.emit(success)
+
+        if self.client:
+            net_func = partial(
+                self.client.entries.delete_entry_by_id, item.entry_id,
+                item.group_id
+            )
+            make_worker_thread(net_func, sync_delete_password_entry, self.worker_exc_received)
+
+            logger.info("Sent request to delete entry '%s'", item.title)
+            return
+        
+        func = partial(self.db.entries.delete_entry_by_id, item.entry_id, item.group_id)
+        make_worker_thread(func, model_delete_password_entry, self.worker_exc_received)
+
+    @Slot(EditedEntryWithGroup)
+    def edit_entry_dialog_accepted(self, data: EditedEntryWithGroup):
+        if self.client:
+            net_func = partial(
+                self.client.entries.update_entry_data,
+                data.entry_id, data
+            )
+            make_worker_thread(net_func, self.sync_edit_password_entry, self.worker_exc_received)
+
+            logger.info("Sending request to edit entry...")
+            self.ui.statusbar.showMessage("Passwords - Sent request to edit password entry", timeout=5000)
+
+            return
+
+        func = partial(
+            self.db.entries.update_entry_data,
+            data.entry_id, data
+        )
+        make_worker_thread(func, self.edit_complete, self.worker_exc_received)
+    
+    @Slot(EntryPublicGet)
+    def sync_edit_password_entry(self, data: EntryPublicGet):
+        # This is used because it's a RootModel generated instead of an actual AnyUrl
+        url_or_none = data.url.model_dump() if data.url is not None else None
+
+        entry = EditedEntryWithGroup(
+            title=data.title, username=data.username,
+            password=data.password, url=url_or_none, 
+            notes=data.notes, entry_id=data.entry_id,
+            group_id=data.group_id
+        )
+        func = partial(
+            self.db.entries.update_entry_data,
+            entry.entry_id, entry
+        )
+        make_worker_thread(func, self.model_edit_password_entry, self.worker_exc_received)
+
+    @Slot(EntryPublicGet)
+    def model_edit_password_entry(self, data: EntryPublicGet):
+        func = partial(
+            self.db.entries.update_entry_data,
+            data.entry_id, data
+        )
+        make_worker_thread(func, self.edit_complete, self.worker_exc_received)
+
+    @Slot(PasswordEntryData)
+    def edit_complete(self, data: PasswordEntryData):
+        self.editEntryComplete.emit(data)
+
+
+class GroupsDataController(QObject):
+    addGroupComplete = Signal(GroupParentData)
+    # deleteGroupComplete = Signal(bool)
+
+    def __init__(self, parent: PasswordEntriesController):
+        super().__init__(parent)
+
+        self.mw_parent = parent.mw_parent
+        self.ctrl_parent = parent
+
+        self.ui = self.mw_parent.ui
+
+        self.db: MainDatabase = parent.db
+        self.client: SyncClient | None = None
+
+        self.current_group: GroupParentData = None
+        self.worker_exc_received = self.ctrl_parent.pw_parent.worker_exc_received
+    
+    def client_loaded(self, client: SyncClient):
+        self.client = client
+
+    def group_changed(self, group: GroupParentData):
+        self.current_group = group
+    
+    @Slot()
+    def add_password_group_accepted(self, data: AddPasswordGroup):
+        if self.client:
+            net_func = partial(
+                self.client.groups.create_group,
+                data.group_name, self.current_group.group_id
+            )
+            make_worker_thread(net_func, self.sync_add_password_group, self.worker_exc_received)
+
+            logger.info("Sent request to add group")
+            return
+        
+        func = partial(
+            self.db.groups.create_group,
+            data.group_name, parent_id=self.current_group.group_id
+        )
+        make_worker_thread(func, self.add_complete, self.worker_exc_received)
+
+    @Slot()
+    def sync_add_password_group(self, group: GroupPublicModify):
+        func = partial(
+            self.db.groups.create_group,
+            group.group_name, parent_id=self.current_group.group_id,
+            group_id=group.group_id
+        )
+        make_worker_thread(func, self.add_complete, self.worker_exc_received)
+    
+    @Slot()
+    def add_complete(self, group: GroupParentData):
+        self.addGroupComplete.emit(group)
