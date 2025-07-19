@@ -1,27 +1,29 @@
 import logging
 import traceback
 import typing
-
-import keyring
-
 from functools import partial
 
+import keyring
 from pydantic import HttpUrl, TypeAdapter, ValidationError
 from PySide6.QtCore import QObject, Signal, Slot
-from PySide6.QtWidgets import QDialog, QMessageBox, QDialogButtonBox, QAbstractButton
+from PySide6.QtWidgets import QAbstractButton, QDialog, QDialogButtonBox, QMessageBox
 
-from ...version import __version__
-from ...localdb.database import MainDatabase
-from ...ui.edit_sync_info_dialog import Ui_EditSyncInfoDialog
-
+# client
 from ...client import Client
 from ...client.api.auth import token_login_api_auth_token_post as token_login
 from ...client.models import AccessTokenError, AccessTokenResponse
 from ...client.models import BodyTokenLoginApiAuthTokenPost as TokenLoginBody
 from ...client.types import Response
 
-from ...models import SyncInfo, TestSyncAuth, SavedSyncInfo
-from ...config import app_file_paths, LogLevels
+# etc
+from ...config import LogLevels, app_file_paths
+from ...localdb.database import MainDatabase
+
+from ...models.models import SavedSyncInfo, SyncInfo, TestSyncAuth
+from ...serversync.client import SyncClient
+
+from ...ui.edit_sync_info_dialog import Ui_EditSyncInfoDialog
+from ...version import __version__
 from ...workers import make_worker_thread
 
 if typing.TYPE_CHECKING:
@@ -43,6 +45,9 @@ class SettingsTabController(QObject):
 
         self.ui = self.mw_parent.ui
         self.edit_syncinfo_dialog = EditSyncInfoDialog(self)
+
+        self.db: MainDatabase = None
+        self.client: SyncClient = None
 
         self.ui_setup()
 
@@ -72,12 +77,20 @@ class SettingsTabController(QObject):
     @Slot(MainDatabase)
     def database_loaded(self, database: MainDatabase):
         self.db = database
+        logger.debug("Local database loaded, retrieving sync info")
+
         make_worker_thread(self.db.syncinfo.get_sync_info, self.sync_info_returned, self.worker_exc_received)
+
+    @Slot(SyncClient)
+    def client_loaded(self, client: SyncClient):
+        self.client = client
+        self.ui.databaseSettingsGroupBox.setEnabled(True)
+
+        logger.debug("Client loaded, enabling database settings")
 
     @Slot(SyncInfo)
     def sync_info_returned(self, sync_info: SyncInfo):
         self.syncinfo = sync_info
-        self.ui.databaseSettingsGroupBox.setEnabled(True)
 
         self.ui.syncInfoUsernameLabel.setText(f"Username: {sync_info.username or None}")
         self.ui.syncInfoServerURLLabel.setText(f"Server URL: {sync_info.server_url}")
@@ -146,6 +159,7 @@ class SettingsTabController(QObject):
                 defaultButton=QMessageBox.StandardButton.Ok,
             )
             self.testAuthFailed.emit()
+            self.ui.syncInfoEditButton.setEnabled(True)
             return
 
         self.ui.statusbar.showMessage("Settings - HTTP response received", timeout=5000)
@@ -158,6 +172,7 @@ class SettingsTabController(QObject):
                 defaultButton=QMessageBox.StandardButton.Ok,
             )
             self.testAuthFailed.emit()
+            self.ui.syncInfoEditButton.setEnabled(True)
             return
 
         logger.debug("Authorization header received")

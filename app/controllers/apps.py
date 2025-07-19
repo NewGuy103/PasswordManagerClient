@@ -36,10 +36,10 @@ class AppsController(QObject):
         self.db_tab.databaseLoaded.connect(self.sync_loader.database_loaded)
         self.db_tab.databaseLoaded.connect(self.wait_for_sync_load)
 
+        self.sync_loader.clientLoaded.connect(self.settings_tab.client_loaded)
         self.sync_loader.clientLoaded.connect(self.pw_tab.client_loaded)
 
         self.sync_loader.clientLoaded.connect(self.enable_passwords_tab)
-        self.sync_loader.loadWithoutSync.connect(self.enable_passwords_tab)
 
     @Slot()
     def wait_for_sync_load(self):

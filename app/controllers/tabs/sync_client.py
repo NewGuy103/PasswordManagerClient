@@ -9,7 +9,7 @@ from functools import partial
 from PySide6.QtCore import QObject, Signal, Slot
 from PySide6.QtWidgets import QMessageBox
 
-from ...models import SyncInfo, SavedSyncInfo
+from ...models.models import SyncInfo, SavedSyncInfo
 from ...workers import make_worker_thread
 
 from ...localdb.database import MainDatabase
@@ -24,7 +24,6 @@ logger: logging.Logger = logging.getLogger("passwordmanager-client")
 
 class SyncClientLoader(QObject):
     clientLoaded = Signal(SyncClient)
-    loadWithoutSync = Signal()
 
     def __init__(self, app_parent: "AppsController"):
         super().__init__(app_parent)
@@ -35,6 +34,8 @@ class SyncClientLoader(QObject):
         self.ui = self.mw_parent.ui
         self.db: MainDatabase = None
 
+        self.disabled_client = SyncClient(enabled=False)
+
     @Slot(MainDatabase)
     def database_loaded(self, db: MainDatabase):
         self.db = db
@@ -44,10 +45,10 @@ class SyncClientLoader(QObject):
 
     @Slot(SyncInfo)
     def db_check_sync_enabled(self, data: SyncInfo):
-        logger.info(data)
         if not data.sync_enabled:
-            self.loadWithoutSync.emit()
+            self.clientLoaded.emit(self.disabled_client)
             self.ui.statusbar.showMessage("SyncClient - Sync is disabled, continuing...", timeout=5000)
+
             return
 
         access_token = keyring.get_password("newguy103-passwordmanager", f"{data.username}={str(data.server_url)}")
@@ -58,9 +59,9 @@ class SyncClientLoader(QObject):
             sync_enabled=data.sync_enabled,
         )
 
-        self.sync_client = SyncClient()
-        func = partial(self.sync_client.setup, saved_sync_info)
+        self.sync_client = SyncClient(enabled=True)
 
+        func = partial(self.sync_client.setup, saved_sync_info)
         make_worker_thread(func, self.sync_client_after_setup, self.worker_exc_received)
 
     @Slot(None)
@@ -80,4 +81,4 @@ class SyncClientLoader(QObject):
             defaultButton=QMessageBox.StandardButton.Ok,
         )
         logger.error("Failed to setup sync client due to exception:", exc_info=exc)
-        self.loadWithoutSync.emit()
+        self.clientLoaded.emit(self.disabled_client)

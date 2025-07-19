@@ -1,63 +1,21 @@
 import logging
 import traceback
 import typing
-
-
 from pathlib import Path
 
-from PySide6.QtCore import QAbstractListModel, QModelIndex, QObject, Qt, Signal, Slot
+from PySide6.QtCore import QModelIndex, QObject, Qt, Signal, Slot
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 
+from ...localdb.database import MainDatabase
+from ...models.ui import RecentDatabasesListModel
 from ...version import __version__
 from ...workers import make_worker_thread
-
-from ...localdb.database import MainDatabase
 
 if typing.TYPE_CHECKING:
     from ..apps import AppsController
 
 
 logger: logging.Logger = logging.getLogger("passwordmanager-client")
-
-
-class RecentDatabasesListModel(QAbstractListModel):
-    def __init__(self, /, parent: "DatabasesTabController" = None):
-        super().__init__(parent)
-        self.db_ctrl = parent
-
-        self._display_data: list[str] = []
-        self._item_data: list[Path] = []
-
-    def rowCount(self, /, parent: QModelIndex = None):
-        if parent is None:
-            parent = QModelIndex()
-
-        return len(self._item_data)
-
-    def data(self, index, /, role):
-        if role == Qt.ItemDataRole.UserRole:
-            return self._item_data[index.row()]
-
-        if role == Qt.ItemDataRole.DisplayRole:
-            value = self._display_data[index.row()]
-            return value
-
-        return None
-
-    def populate_model(self, recent_databases: list[Path]):
-        self.beginResetModel()
-
-        self._display_data.clear()
-        self._item_data.clear()
-
-        logger.debug("Cleared all model entries")
-
-        for path in recent_databases:
-            self._item_data.append(path)
-            self._display_data.append(str(path))
-
-        logger.debug("Added %d entries to model", len(self._item_data))
-        self.endResetModel()
 
 
 class DatabasesTabController(QObject):
@@ -90,7 +48,6 @@ class DatabasesTabController(QObject):
             return
 
         path = Path(file_name)
-
         settings = self.app_parent.mw_parent.app_settings
 
         # Sort it to the top
@@ -110,7 +67,6 @@ class DatabasesTabController(QObject):
             return
 
         path = Path(file_name)
-
         settings = self.app_parent.mw_parent.app_settings
 
         # Sort it to the top
@@ -166,5 +122,7 @@ class DatabasesTabController(QObject):
 
     @Slot(None)
     def database_after_setup(self):
+        logger.info("Loaded local database")
+
         self.databaseLoaded.emit(self.maindb)
         self.ui.statusbar.showMessage("Databases - Loaded local database", timeout=5000)

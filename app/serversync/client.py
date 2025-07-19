@@ -21,7 +21,9 @@ from ..client.api.groups import get_group_entries_api_groups_group_id_entries_ge
 from ..client.api.groups import retrieve_top_level_groups_api_groups_get as api_get_root_group
 from ..client.models import UserInfoPublic
 from ..client.types import Response
-from ..models import EditedEntryWithGroup, EditedPasswordEntryInfo, SavedSyncInfo
+
+# models
+from ..models.models import EditedEntryWithGroup, EditedPasswordEntryInfo, SavedSyncInfo
 from . import models as pd_models  # Generated Pydantic models
 
 logger: logging.Logger = logging.getLogger("passwordmanager-client")
@@ -31,10 +33,14 @@ DEFAULT_CHUNK_SIZE: int = 25 * 1024 * 1024  # 25 MiB
 class SyncClient:
     """Abstraction to syncing with the server, separating the local database and the server sync."""
 
-    def __init__(self):
+    def __init__(self, enabled: bool = True):
         self.auth_client: AuthenticatedClient = None
+        self.enabled: bool = enabled
 
     def setup(self, sync_info: SavedSyncInfo) -> None:
+        if not self.enabled:
+            raise RuntimeError("client is explicitly disabled, cannot setup")
+
         self.auth_client: AuthenticatedClient = AuthenticatedClient(
             str(sync_info.server_url),
             sync_info.access_token,

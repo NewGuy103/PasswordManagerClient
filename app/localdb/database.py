@@ -8,7 +8,7 @@ from sqlalchemy import Engine
 from sqlmodel import Session, SQLModel, create_engine, select, text, true
 
 from ..localdb.dbtables import PasswordEntry, PasswordGroups, SyncConfig
-from ..models import (
+from ..models.models import (
     EditedEntryWithGroup,
     EditedPasswordEntryInfo,
     GroupChildrenData,
