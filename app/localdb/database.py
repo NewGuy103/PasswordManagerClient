@@ -9,7 +9,7 @@ from sqlmodel import Session, SQLModel, create_engine, select, text, true
 
 from ..localdb.dbtables import PasswordEntry, PasswordGroups, SyncConfig
 from ..models.models import (
-    EditedEntryWithGroup,
+    EditedEntryWithID,
     EditedPasswordEntryInfo,
     GroupChildrenData,
     GroupParentData,
@@ -86,9 +86,9 @@ class PasswordGroupMethods:
             session.add(new_group)
             session.commit()
 
-            return self.get_children_of_group(new_group.group_id)
+            return GroupParentData(group_id=g_id, group_name=group_name, parent_id=parent_id)
 
-    def get_children_of_root(self) -> GroupParentData:
+    def get_children_of_root(self) -> list[GroupChildrenData]:
         with Session(self.engine) as session:
             result = session.exec(select(PasswordGroups).where(PasswordGroups.is_root == true()))
             root_group = result.one()
@@ -101,16 +101,9 @@ class PasswordGroupMethods:
                 )
                 child_models.append(child_model)
 
-            model = GroupParentData(
-                group_name=root_group.group_name,
-                parent_id=None,
-                group_id=root_group.group_id,
-                child_groups=child_models,
-            )
+        return child_models
 
-        return model
-
-    def get_children_of_group(self, group_id: uuid.UUID) -> GroupParentData:
+    def get_children_of_group(self, group_id: uuid.UUID) -> list[GroupChildrenData]:
         with Session(self.engine) as session:
             result = session.exec(select(PasswordGroups).where(PasswordGroups.group_id == group_id))
             group = result.one()
@@ -125,14 +118,7 @@ class PasswordGroupMethods:
                 )
                 child_models.append(child_model)
 
-            model = GroupParentData(
-                group_name=group.group_name,
-                parent_id=group.parent_id,
-                group_id=group.group_id,
-                child_groups=child_models,
-            )
-
-        return model
+        return child_models
 
     def delete_group(self, group_id: uuid.UUID) -> bool:
         with Session(self.engine) as session:
@@ -155,6 +141,28 @@ class PasswordGroupMethods:
                 return False
 
         return True
+    
+    def get_root_info(self) -> GroupParentData:
+        with Session(self.engine) as session:
+            result = session.exec(select(PasswordGroups).where(PasswordGroups.is_root == true()))
+            group = result.one()
+            
+            return GroupParentData(
+                group_id=group.group_id,
+                group_name=group.group_name,
+                parent_id=None
+            )
+
+    def get_group_info(self, group_id: uuid.UUID) -> GroupParentData:
+        with Session(self.engine) as session:
+            result = session.exec(select(PasswordGroups).where(PasswordGroups.group_id == group_id))
+            group = result.one()
+            
+            return GroupParentData(
+                group=group.group_id,
+                group_name=group.group_name,
+                parent_id=group.group_id
+            )
 
 
 class PasswordEntryMethods:
@@ -255,7 +263,7 @@ class PasswordEntryMethods:
 
         return True
 
-    def update_entry_data(self, entry_id: uuid.UUID, data: EditedEntryWithGroup) -> PasswordEntryData:
+    def update_entry_data(self, entry_id: uuid.UUID, data: EditedEntryWithID) -> PasswordEntryData:
         with Session(self.engine) as session:
             result = session.exec(select(PasswordEntry).join(PasswordGroups).where(PasswordEntry.entry_id == entry_id))
             entry = result.one()

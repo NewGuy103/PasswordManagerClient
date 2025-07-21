@@ -1,15 +1,11 @@
+import datetime
 from collections.abc import Mapping
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Union, cast
+from uuid import UUID
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
-
-
 from dateutil.parser import isoparse
-from typing import cast
-from uuid import UUID
-import datetime
-
 
 T = TypeVar("T", bound="EntryPublicGet")
 
@@ -19,7 +15,7 @@ class EntryPublicGet:
     title: str
     username: str
     password: str
-    url: None | str
+    url: Union[None, str]
     notes: str
     entry_id: UUID
     group_id: UUID
@@ -33,7 +29,7 @@ class EntryPublicGet:
 
         password = self.password
 
-        url: None | str
+        url: Union[None, str]
         url = self.url
 
         notes = self.notes
@@ -70,10 +66,10 @@ class EntryPublicGet:
 
         password = d.pop("password")
 
-        def _parse_url(data: object) -> None | str:
+        def _parse_url(data: object) -> Union[None, str]:
             if data is None:
                 return data
-            return cast(None | str, data)
+            return cast(Union[None, str], data)
 
         url = _parse_url(d.pop("url"))
 

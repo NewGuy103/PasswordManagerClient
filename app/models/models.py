@@ -15,26 +15,26 @@ class PasswordEntryBase(BaseModel):
     url: AnyUrl | None = None
 
     notes: str
+    group_id: uuid.UUID
 
 
 class EditedPasswordEntryInfo(PasswordEntryBase):
     pass
 
 
-class EditedEntryWithGroup(EditedPasswordEntryInfo):
+class EditedEntryWithID(EditedPasswordEntryInfo):
     entry_id: uuid.UUID
-    group_id: uuid.UUID
 
 
 class PasswordEntryData(PasswordEntryBase):
     entry_id: uuid.UUID
-    group_id: uuid.UUID
     created_at: AwareDatetime = datetime.now(UTC)
 
 
 # TODO: Extend this when adding metadata
 class AddPasswordGroup(BaseModel):
     group_name: str
+    parent_id: uuid.UUID
 
 
 class GroupBase(BaseModel):
@@ -44,10 +44,9 @@ class GroupBase(BaseModel):
 
 
 class GroupParentData(GroupBase):
-    child_groups: list["GroupChildrenData"]
+    pass
 
 
-# Leave out child_groups intentionally
 class GroupChildrenData(GroupBase):
     parent_id: uuid.UUID
 

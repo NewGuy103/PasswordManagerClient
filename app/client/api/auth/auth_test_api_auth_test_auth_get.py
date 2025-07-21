@@ -1,13 +1,12 @@
 from http import HTTPStatus
-from typing import Any
+from typing import Any, Union
 
 import httpx
 
-from ...client import AuthenticatedClient, Client
-from ...types import Response
 from ... import errors
-
+from ...client import AuthenticatedClient, Client
 from ...models.user_info_public import UserInfoPublic
+from ...types import Response
 
 
 def _get_kwargs() -> dict[str, Any]:
@@ -19,7 +18,7 @@ def _get_kwargs() -> dict[str, Any]:
     return _kwargs
 
 
-def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> UserInfoPublic | None:
+def _parse_response(*, client: Union[AuthenticatedClient, Client], response: httpx.Response) -> UserInfoPublic | None:
     if response.status_code == 200:
         response_200 = UserInfoPublic.from_dict(response.json())
 
@@ -30,7 +29,9 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
         return None
 
 
-def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[UserInfoPublic]:
+def _build_response(
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Response[UserInfoPublic]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,

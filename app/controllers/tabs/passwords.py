@@ -7,30 +7,29 @@ from functools import partial
 
 from pydantic import AnyUrl, TypeAdapter, ValidationError
 from PySide6.QtCore import QModelIndex, QObject, Qt, Signal, Slot
-from PySide6.QtGui import QAction, QIcon, QStandardItem, QStandardItemModel
+from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QHeaderView, QMenu, QMessageBox
 
 from ...localdb.database import MainDatabase
 from ...models.models import (
     AddPasswordGroup,
-    EditedEntryWithGroup,
+    EditedEntryWithID,
     EditedPasswordEntryInfo,
+    GroupChildrenData,
     GroupParentData,
     PasswordEntryData,
 )
-from ...models.ui import PasswordEntriesTableModel
+from ...models.ui import PasswordEntriesTableModel, PasswordGroupsTreeModel
 from ...serversync.client import SyncClient
-from ...serversync.models import GenericSuccess, GroupPublicModify
 from ...ui.add_password_group_dialog import Ui_AddPasswordGroupDialog
 from ...ui.password_entry_info_dialog import Ui_PasswordEntryInfoDialog
-from ..entry_data import EntriesDataController
 from ...workers import make_worker_thread
+from ..data_helpers import EntriesDataController, GroupsDataController
 
 if typing.TYPE_CHECKING:
     from ..apps import AppsController
 
 
-# TODO: Cleanup this module and make it readable
 logger: logging.Logger = logging.getLogger("passwordmanager-client")
 
 
@@ -106,6 +105,8 @@ class PasswordEntriesController(QObject):
 
         self.db: MainDatabase = database
         self.client: SyncClient = client
+
+        self.current_group: GroupParentData = None
 
         self.entries_model = PasswordEntriesTableModel(parent=self)
         self.ui.passwordEntriesTableView.setModel(self.entries_model)
@@ -185,7 +186,7 @@ class PasswordEntriesController(QObject):
 
     @Slot(GroupParentData)
     def reload_entries(self, group: GroupParentData):
-        self.data_ctrl.add_entry.group_changed(group)
+        self.current_group = group
         self.data_ctrl.fetch_entries.start_processing(group)
 
         self.ui.statusbar.showMessage(f"Passwords - Reloading entries for group '{group.group_name}'", timeout=5000)
@@ -199,7 +200,7 @@ class PasswordEntriesController(QObject):
 
     @Slot()
     def add_password_entry(self):
-        self.entry_info_dialog.reset_data(emit_as=EmitDialogInfoAs.add)
+        self.entry_info_dialog.reset_data(self.current_group, emit_as=EmitDialogInfoAs.add)
         self.entry_info_dialog.show()
 
     @Slot(PasswordEntryData)
@@ -233,7 +234,7 @@ class PasswordEntriesController(QObject):
         self.ui.statusbar.showMessage("Passwords - Entry deleted")
 
     def edit_password_entry(self, item: PasswordEntryData):
-        self.entry_info_dialog.reset_data(emit_as=EmitDialogInfoAs.edit)
+        self.entry_info_dialog.reset_data(self.current_group, emit_as=EmitDialogInfoAs.edit)
         self.entry_info_dialog.set_existing_data(item)
 
         self.entry_info_dialog.show()
@@ -259,7 +260,6 @@ class PasswordEntriesController(QObject):
 
 
 # TODO: Ensure when setting up sync for the first time, root group always matches the server
-# TODO: Use an actual tree model instead of relying on an item model
 class PasswordGroupsItemController(QObject):
     groupChanged = Signal(GroupParentData)
 
@@ -275,18 +275,16 @@ class PasswordGroupsItemController(QObject):
         self.client: SyncClient = client
 
         self.worker_exc_received = pw_parent.worker_exc_received
+        self._loaded_ids: set[uuid.UUID] = set()
 
         # Controllers here
+        self.groups_model = PasswordGroupsTreeModel(parent=self)
         self.add_group_dialog = AddPasswordGroupDialog(self)
-        self.groups_model = QStandardItemModel(parent=self)
 
+        self.root_group: GroupParentData = None
         self.current_group: GroupParentData = None
+
         self.data_ctrl: GroupsDataController = GroupsDataController(self)
-
-        # TODO: Refactor this if needed
-        self.root_item: QStandardItem = None
-        self._items: dict[uuid.UUID, QStandardItem] = {}
-
         self.setup()
 
     def setup(self):
@@ -317,92 +315,84 @@ class PasswordGroupsItemController(QObject):
         self.ui.passwordGroupsTreeView.expandAll()
         self.ui.passwordGroupsTreeView.resizeColumnToContents(0)
 
-        self.add_group_dialog.dataComplete.connect(self.data_ctrl.add_password_group_accepted)
-        self.data_ctrl.addGroupComplete.connect(self.add_password_group_complete)
+        self.ui.passwordGroupsTreeView.expanded.connect(self.treeview_item_expanded)
 
-        # TODO: Make this use server sync too
-        make_worker_thread(self.db.groups.get_children_of_root, self.after_get_root_group, self.worker_exc_received)
+        self.add_group_dialog.dataComplete.connect(self.data_ctrl.add_group.start_processing)
+        self.data_ctrl.add_group.addGroupComplete.connect(self.add_password_group_complete)
+
+        self.data_ctrl.delete_group.deleteGroupComplete.connect(self.delete_complete)
+        self.data_ctrl.fetch_root.fetchRootComplete.connect(self.after_get_root_group)
+
+        self.data_ctrl.fetch_children.fetchRootChildrenComplete.connect(self.after_get_root_children)
+        self.data_ctrl.fetch_root.start_processing()
+
         self.ui.statusbar.showMessage("Passwords - Loading top-level and child groups", timeout=5000)
 
     @Slot()
     def after_get_root_group(self, root_group: GroupParentData):
-        parentItem = self.groups_model.invisibleRootItem()
+        self.root_group = root_group
+        self.groups_model.add_root_group(root_group)
 
-        self.root_item = QStandardItem("Root")
-        self.root_item.setEditable(False)
-
-        self.root_item.setData(root_group, Qt.ItemDataRole.UserRole)
-        parentItem.appendRow(self.root_item)
-
-        self._items[root_group.group_id] = self.root_item
-        self.groups_model.setHeaderData(0, Qt.Orientation.Horizontal, "Groups")
-
-        func = partial(self.load_groups, root_group, parent_item=None)
-        make_worker_thread(func, self.all_groups_loaded, self.worker_exc_received)
+        logger.info("Loaded root group, loading children")
+        self.data_ctrl.fetch_children.start_processing(None)
 
     @Slot()
-    def all_groups_loaded(self):
-        root_group = self.root_item.data(Qt.ItemDataRole.UserRole)
-        self.current_group = root_group
+    def after_get_root_children(self, groups: list[GroupChildrenData]):
+        for group in groups:
+            self._loaded_ids.add(group.group_id)
+            self.groups_model.add_group(group)
+        
+            func = partial(self.data_ctrl.fetch_children.process_threadless, group)
+            make_worker_thread(func, self.load_groups, self.worker_exc_received)
 
-        self.data_ctrl.group_changed(root_group)
-        self.groupChanged.emit(root_group)
+            logger.debug("Loaded child of root '%s'", group.group_name)
+            
+        self.current_group = self.root_group
+        self.groupChanged.emit(self.root_group)
 
+        logger.info("Loaded root children")
         self.ui.statusbar.showMessage("Passwords - Loaded top-level and child groups", timeout=5000)
 
-    def load_groups(self, parent_group: GroupParentData, parent_item: QStandardItem | None = None):
-        """Queries the database, use this in a worker thread."""
-        if self.client.enabled:
-            net_children = self.client.groups.get_children_of_group(parent_group.group_id)
-            db_children = self.db.groups.get_children_of_group(parent_group.group_id)
+    @Slot()
+    def load_groups(self, data: tuple[list[GroupChildrenData], bool]):
+        groups, _ = data
+        for group in groups:
+            self.groups_model.add_group(group)
 
-            len_net_children = len(net_children.child_groups)
-            len_db_children = len(db_children.child_groups)
+            func = partial(self.data_ctrl.fetch_children.process_threadless, group)
+            make_worker_thread(func, self.load_groups_without_recursion, self.worker_exc_received)
+            
+            logger.debug("Added group '%s'", group.group_name)
 
-            if len_net_children != len_db_children:
-                logger.error("Expected %d groups locally, instead got %d groups", len_net_children, len_db_children)
-                # raise ValueError("Server groups do not match local groups")
-
-            children = GroupParentData.model_validate(net_children, from_attributes=True)
-        else:
-            children = self.db.groups.get_children_of_group(parent_group.group_id)
-
-        parentItem = parent_item or self.root_item
-
-        # TODO: Improve how this is loaded, it loads recusively and can lag
-        for group in children.child_groups:
-            item = self.append_group(group, parentItem)
-            self._items[group.group_id] = item
-
-            logger.debug(
-                "Got child group [%s - %s] of group '%s'", group.group_id, group.group_name, parent_group.group_name
-            )
-            self.load_groups(group, parent_item=item)
-
-    def append_group(self, group: GroupParentData, parent_item: QStandardItem | None = None) -> QStandardItem:
-        parentItem = parent_item or self.root_item
-
-        item = QStandardItem(f"{group.group_name}")
-        item.setEditable(False)
-
-        item.setData(group, role=Qt.ItemDataRole.UserRole)
-        parentItem.appendRow(item)
-
-        logger.debug(
-            "Appended group [%s - %s] to tree model",
-            group.group_id,
-            group.group_name,
-        )
-        return item
-
+    @Slot()
+    def load_groups_without_recursion(self, data: tuple[list[GroupChildrenData], bool]):
+        groups, _ = data
+        for group in groups:
+            self.groups_model.add_group(group)
+            logger.debug("Added group '%s'", group.group_name)
+    
     @Slot()
     def treeview_clicked(self, index: QModelIndex):
         data: GroupParentData = index.data(Qt.ItemDataRole.UserRole)
         self.current_group = data
 
-        self.data_ctrl.group_changed(data)
         self.groupChanged.emit(data)
 
+    @Slot()
+    def treeview_item_expanded(self, index: QModelIndex):
+        data: GroupChildrenData = index.data(Qt.ItemDataRole.UserRole)
+        if data == self.root_group:
+            logger.debug("Not reloading root group")
+            return
+        
+        if data.group_id in self._loaded_ids:
+            logger.debug("Children of group '%s' already loaded, skipping", data.group_name)
+            return
+        
+        self._loaded_ids.add(data.group_id)
+        func = partial(self.data_ctrl.fetch_children.process_threadless, data)
+        make_worker_thread(func, self.load_groups, self.worker_exc_received)
+    
     @Slot()
     def context_menu_event(self, pos):
         context = QMenu(self.mw_parent)
@@ -425,7 +415,7 @@ class PasswordGroupsItemController(QObject):
             index = indexes[0]
             current_item: PasswordEntryData = self.groups_model.data(index, Qt.ItemDataRole.UserRole)
 
-            remove_group_action.triggered.connect(lambda: self.delete_password_group(index, current_item))
+            remove_group_action.triggered.connect(lambda: self.delete_password_group(current_item))
 
         # Item-dependent actions
         if indexes:
@@ -435,19 +425,15 @@ class PasswordGroupsItemController(QObject):
 
     @Slot()
     def add_password_group(self):
-        self.add_group_dialog.reset_data()
+        self.add_group_dialog.reset_data(self.current_group)
         self.add_group_dialog.show()
 
     @Slot()
     def add_password_group_complete(self, data: GroupParentData):
-        item = self._items[data.parent_id]
-        new_item = self.append_group(data, item)
+        self.groups_model.add_group(data)
 
-        self._items[data.group_id] = new_item
-
-    def delete_password_group(self, index: QModelIndex, data: GroupParentData):
-        root_data: GroupParentData = self.root_item.data(Qt.ItemDataRole.UserRole)
-        if root_data.group_id == data.group_id:
+    def delete_password_group(self, data: GroupParentData):
+        if self.root_group.group_id == data.group_id:
             QMessageBox.warning(
                 self.mw_parent,
                 "PasswordManager - Client",
@@ -467,38 +453,12 @@ class PasswordGroupsItemController(QObject):
         if btn == QMessageBox.StandardButton.No:
             return
 
-        # TODO: Clean this up and figure out a better way to cleanup groups and their children
-        @Slot()
-        def delete_complete():
-            parent_index = index.parent()
-            if parent_index.isValid():
-                parent_item = self.groups_model.itemFromIndex(parent_index)
-            else:
-                parent_item = self.groups_model.invisibleRootItem()
+        self.data_ctrl.delete_group.start_processing(data)
 
-            row = index.row()
-            items = parent_item.takeRow(row)
-
-            for item in items:
-                if item is None:
-                    continue
-
-                group = item.data(Qt.ItemDataRole.UserRole)
-                del self._items[group.group_id]
-
-            self.ui.passwordGroupsTreeView.clearSelection()
-
-        @Slot()
-        def sync_delete_complete(data: GenericSuccess):
-            func = partial(self.db.groups.delete_group, data.group_id)
-            make_worker_thread(func, delete_complete, self.worker_exc_received)
-
-        if self.client:
-            net_func = partial(self.client.groups.delete_group, data.group_id)
-            make_worker_thread(net_func, sync_delete_complete, self.worker_exc_received)
-        else:
-            func = partial(self.db.groups.delete_group, data.group_id)
-            make_worker_thread(func, delete_complete, self.worker_exc_received)
+    @Slot()
+    def delete_complete(self, data: GroupParentData):
+        self.groups_model.remove_group(data)
+        self.ui.passwordGroupsTreeView.clearSelection()
 
 
 class PasswordEntryInfoController(QObject):
@@ -544,7 +504,7 @@ class PasswordEntryInfoController(QObject):
 
 class PasswordEntryInfoDialog(QDialog):
     addEntryRequested = Signal(EditedPasswordEntryInfo)
-    editEntryRequested = Signal(EditedEntryWithGroup)
+    editEntryRequested = Signal(EditedEntryWithID)
 
     def __init__(self, /, parent: PasswordEntriesController):
         super().__init__(parent.mw_parent)
@@ -556,11 +516,14 @@ class PasswordEntryInfoDialog(QDialog):
         self._emit_as: EmitDialogInfoAs = None
         self._data: PasswordEntryData | None = None
 
+        self._group: GroupParentData = None
         self.ui.urlLineEdit.textEdited.connect(self.url_text_edited)
 
-    def reset_data(self, emit_as: EmitDialogInfoAs = EmitDialogInfoAs.add):
+    def reset_data(self, group: GroupParentData, emit_as: EmitDialogInfoAs = EmitDialogInfoAs.add):
         self._emit_as = emit_as
         self._data = None
+
+        self._group = group
 
         self.ui.titleLineEdit.setText("")
         self.ui.usernameLineEdit.setText("")
@@ -589,16 +552,17 @@ class PasswordEntryInfoDialog(QDialog):
 
         notes = self.ui.notesPlainTextEdit.toPlainText()
 
-        data = EditedPasswordEntryInfo(title=title, username=username, password=password, url=url or None, notes=notes)
+        group_id = self._group.group_id if not self._data else self._data.group_id
+        data = EditedPasswordEntryInfo(
+            title=title, username=username, password=password, url=url or None, notes=notes, group_id=group_id
+        )
 
         if self._emit_as == EmitDialogInfoAs.add:
             self.addEntryRequested.emit(data)
         elif self._emit_as == EmitDialogInfoAs.edit:
             assert self._data is not None, "Edit data is invalid"
 
-            with_group_data = EditedEntryWithGroup(
-                group_id=self._data.group_id, entry_id=self._data.entry_id, **data.model_dump()
-            )
+            with_group_data = EditedEntryWithID(entry_id=self._data.entry_id, **data.model_dump())
             self.editEntryRequested.emit(with_group_data)
 
         return super().accept()
@@ -627,17 +591,19 @@ class AddPasswordGroupDialog(QDialog):
         self.ui = Ui_AddPasswordGroupDialog()
 
         self.pw_parent = parent
+        self._group: GroupParentData | None = None
         self.ui.setupUi(self)
 
         self.ui.groupNameLineEdit.textEdited.connect(self.groupname_text_edited)
         self.ui.dialogButtonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(False)
 
-    def reset_data(self):
+    def reset_data(self, current_group: GroupParentData):
+        self._group = current_group
         self.ui.groupNameLineEdit.setText("")
 
     def accept(self):
         group_name = self.ui.groupNameLineEdit.text()
-        data = AddPasswordGroup(group_name=group_name)
+        data = AddPasswordGroup(group_name=group_name, parent_id=self._group.group_id)
 
         self.dataComplete.emit(data)
         return super().accept()
@@ -650,51 +616,3 @@ class AddPasswordGroupDialog(QDialog):
             btn.setEnabled(False)
         else:
             btn.setEnabled(True)
-
-
-class GroupsDataController(QObject):
-    addGroupComplete = Signal(GroupParentData)
-    # deleteGroupComplete = Signal(bool)
-
-    def __init__(self, parent: PasswordEntriesController):
-        super().__init__(parent)
-
-        self.mw_parent = parent.mw_parent
-        self.ctrl_parent = parent
-
-        self.ui = self.mw_parent.ui
-
-        self.db: MainDatabase = parent.db
-        self.client: SyncClient = parent.client
-
-        self.current_group: GroupParentData = None
-        self.worker_exc_received = self.ctrl_parent.pw_parent.worker_exc_received
-
-    def group_changed(self, group: GroupParentData):
-        self.current_group = group
-
-    @Slot()
-    def add_password_group_accepted(self, data: AddPasswordGroup):
-        if self.client:
-            net_func = partial(self.client.groups.create_group, data.group_name, self.current_group.group_id)
-            make_worker_thread(net_func, self.sync_add_password_group, self.worker_exc_received)
-
-            logger.info("Sent request to add group")
-            return
-
-        func = partial(self.db.groups.create_group, data.group_name, parent_id=self.current_group.group_id)
-        make_worker_thread(func, self.add_complete, self.worker_exc_received)
-
-    @Slot()
-    def sync_add_password_group(self, group: GroupPublicModify):
-        func = partial(
-            self.db.groups.create_group,
-            group.group_name,
-            parent_id=self.current_group.group_id,
-            group_id=group.group_id,
-        )
-        make_worker_thread(func, self.add_complete, self.worker_exc_received)
-
-    @Slot()
-    def add_complete(self, group: GroupParentData):
-        self.addGroupComplete.emit(group)

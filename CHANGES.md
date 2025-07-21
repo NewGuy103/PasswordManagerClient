@@ -1,59 +1,44 @@
-# Clean up passwords tab code
+# Implement password groups tree model and update client
 
 **Version**: v0.1.0
 
-**Date:** 19/07/2025
+**Date:** 21/07/2025
 
 ## Additions
 
-**`/app/models/`**:
+**`/app/workers.py`**:
 
-* Added folder to store PySide6 models and state models.
+* Added simple object names and thread counts for debugging.
 
-**`/app/serversync/client.py`**:
+**`/app/models/ui.py`**:
 
-* Added option to set client to be enabled/disabled when initializing.
+* Added `PasswordGroupItem` and `PasswordGroupsTreeModel` to handle password groups instead of using a standard item model.
 
-**`/app/controllers/entry_data.py`**:
+**`/app/models/models.py`**:
 
-* Added as the helper to manage data within the passwords tab.
-
-**`/app/controllers/tabs/passwords.py`**:
-
-* Added a way to optionally retrieve a loaded client.
+* Added `group_id` to `PasswordEntryBase` because all state models require a `group_id` anyway.
+* Added `parent_id` field to `AddPasswordGroup` to ensure current group can't change while processing.
 
 ## Changes
 
-**`/app/models.py`**:
+**`/app/serversync/ | /app/client`**:
 
-* Moved file to `/app/models/` directory.
+* Updated client to match server's API.
 
-**`/app/controllers/sync_client.py`**:
+**`/app/models/models.py`**:
 
-* No longer emits `loadWithoutSync`, instead only emits `clientLoaded` that has `self.enabled` set.
+* Removed `child_groups` from `GroupParentData`.
 
-**`/app/controllers/apps.py`**:
+**`/app/models/models.py`**:
 
-* Changed to disable the databases tab while waiting for server sync to load.
-* No longer switches to the settings tab.
-
-**`/app/controllers/tabs/databases.py`**:
-
-* Moved list model to `/app/models/ui.py`.
-
-**`/app/controllers/tabs/setting.py`**:
-
-* Unlocking the database settings tab now happens when client is loaded to let everything load first.
-* Now locks the edit sync info button while waiting for a request to complete.
+* Separated `get_root_info()` and `get_children_of_root()`.
+* Separated `get_group_info()` and `get_children_of_group()`
 
 **`/app/controllers/tabs/passwords.py`**:
 
-* Moved table model to `/app/models/ui.py`.
-* Cleaned up main controller, setup now happens only after both database and client have been loaded.
-* Entries and groups controllers now require the database and client instances on initialization instead of taking the objects from the parent.
-* Entries controller no longer depends on a `QModelIndex` and instead the UUID/model.
+* Many changes related to groups and internal models.
 
 ## Misc
 
-* Cleanup of database and server sync code is halfway done, next is to clean up the groups and use
-  a real tree model instead of relying on a standard item model.
+* Actual features such as paging and ensuring the server and client don't become out of sync will follow
+  as the current goal is to clean up the application and then work from there.

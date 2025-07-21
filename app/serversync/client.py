@@ -19,11 +19,14 @@ from ..client.api.groups import delete_password_entry_api_groups_group_id_entrie
 from ..client.api.groups import get_group_children_api_groups_group_id_children_get as api_get_group
 from ..client.api.groups import get_group_entries_api_groups_group_id_entries_get as api_get_entries
 from ..client.api.groups import retrieve_top_level_groups_api_groups_get as api_get_root_group
+from ..client.api.groups import retrieve_root_group_info_api_groups_info_get as api_get_root_group_info
+from ..client.api.groups import retrieve_group_info_api_groups_group_id_info_get as api_get_group_info
+
 from ..client.models import UserInfoPublic
 from ..client.types import Response
 
 # models
-from ..models.models import EditedEntryWithGroup, EditedPasswordEntryInfo, SavedSyncInfo
+from ..models.models import EditedEntryWithID, EditedPasswordEntryInfo, SavedSyncInfo
 from . import models as pd_models  # Generated Pydantic models
 
 logger: logging.Logger = logging.getLogger("passwordmanager-client")
@@ -89,27 +92,29 @@ class PasswordGroupMethods:
         self.parent = parent
         self.auth_client = parent.auth_client
 
-    def create_group(self, group_name: str, parent_id: uuid.UUID) -> pd_models.GroupPublicModify:
+        self.list_of_children: TypeAdapter = TypeAdapter(list[pd_models.GroupPublicChildren])
+
+    def create_group(self, group_name: str, parent_id: uuid.UUID) -> pd_models.GroupPublicGet:
         body = api_models.GroupCreate(group_name=group_name, parent_id=parent_id)
-        data: api_models.GroupPublicModify = api_create_group.sync(client=self.auth_client, body=body)
-        assert data is not None
-
-        model = pd_models.GroupPublicModify.model_validate(data, from_attributes=True)
-        return model
-
-    def get_children_of_root(self) -> pd_models.GroupPublicGet:
-        data: api_models.GroupPublicGet = api_get_root_group.sync(client=self.auth_client)
+        data: api_models.GroupPublicGet = api_create_group.sync(client=self.auth_client, body=body)
         assert data is not None
 
         model = pd_models.GroupPublicGet.model_validate(data, from_attributes=True)
         return model
 
-    def get_children_of_group(self, group_id: uuid.UUID) -> pd_models.GroupPublicGet:
-        data: api_models.GroupPublicGet = api_get_group.sync(group_id, client=self.auth_client)
+    def get_children_of_root(self) -> list[pd_models.GroupPublicChildren]:
+        data: list[api_models.GroupPublicChildren] = api_get_root_group.sync(client=self.auth_client)
         assert data is not None
 
-        model_data: pd_models.GroupPublicGet = pd_models.GroupPublicGet.model_validate(data, from_attributes=True)
-        return model_data
+        models = self.list_of_children.validate_python(data, from_attributes=True)
+        return models
+
+    def get_children_of_group(self, group_id: uuid.UUID) -> list[pd_models.GroupPublicChildren]:
+        data = api_get_group.sync(group_id, client=self.auth_client)
+        assert data is not None
+
+        models = self.list_of_children.validate_python(data, from_attributes=True)
+        return models
 
     def delete_group(self, group_id: uuid.UUID) -> pd_models.GenericSuccess:
         data: api_models.GenericSuccess = api_delete_group.sync(group_id, client=self.auth_client)
@@ -117,6 +122,20 @@ class PasswordGroupMethods:
 
         model: pd_models.GenericSuccess = pd_models.GenericSuccess.model_validate(data, from_attributes=True)
         return model
+
+    def get_root_info(self) -> pd_models.GroupPublicGet:
+        data = api_get_root_group_info.sync(client=self.auth_client)
+        assert data is not None
+
+        models = pd_models.GroupPublicGet.model_validate(data, from_attributes=True)
+        return models
+
+    def get_group_info(self, group_id: uuid.UUID) -> pd_models.GroupPublicGet:
+        data = api_get_group_info.sync(group_id, client=self.auth_client)
+        assert data is not None
+
+        models = pd_models.GroupPublicGet.model_validate(data, from_attributes=True)
+        return models
 
 
 class PasswordEntryMethods:
@@ -156,7 +175,7 @@ class PasswordEntryMethods:
         model = pd_models.GenericSuccess.model_validate(data, from_attributes=True)
         return model
 
-    def update_entry_data(self, entry_id: uuid.UUID, data: EditedEntryWithGroup) -> pd_models.EntryPublicGet:
+    def update_entry_data(self, entry_id: uuid.UUID, data: EditedEntryWithID) -> pd_models.EntryPublicGet:
         url_or_none = str(data.url) if data.url else None
 
         body: api_models.EntryUpdate = api_models.EntryUpdate(

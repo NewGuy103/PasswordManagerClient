@@ -1,14 +1,13 @@
 from http import HTTPStatus
-from typing import Any
+from typing import Any, Union
 
 import httpx
 
-from ...client import AuthenticatedClient, Client
-from ...types import Response
 from ... import errors
-
+from ...client import AuthenticatedClient, Client
 from ...models.body_revoke_login_token_api_auth_revoke_post import BodyRevokeLoginTokenApiAuthRevokePost
 from ...models.http_validation_error import HTTPValidationError
+from ...types import Response
 
 
 def _get_kwargs(
@@ -31,8 +30,8 @@ def _get_kwargs(
 
 
 def _parse_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Any | HTTPValidationError | None:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Union[Any, HTTPValidationError] | None:
     if response.status_code == 200:
         response_200 = response.json()
         return response_200
@@ -47,8 +46,8 @@ def _parse_response(
 
 
 def _build_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Response[Any | HTTPValidationError]:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Response[Union[Any, HTTPValidationError]]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -61,7 +60,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient,
     body: BodyRevokeLoginTokenApiAuthRevokePost,
-) -> Response[Any | HTTPValidationError]:
+) -> Response[Union[Any, HTTPValidationError]]:
     """Revoke Login Token
 
      OAuth2 token revocation.
@@ -92,7 +91,7 @@ def sync(
     *,
     client: AuthenticatedClient,
     body: BodyRevokeLoginTokenApiAuthRevokePost,
-) -> Any | HTTPValidationError | None:
+) -> Union[Any, HTTPValidationError] | None:
     """Revoke Login Token
 
      OAuth2 token revocation.
@@ -118,7 +117,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
     body: BodyRevokeLoginTokenApiAuthRevokePost,
-) -> Response[Any | HTTPValidationError]:
+) -> Response[Union[Any, HTTPValidationError]]:
     """Revoke Login Token
 
      OAuth2 token revocation.
@@ -147,7 +146,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient,
     body: BodyRevokeLoginTokenApiAuthRevokePost,
-) -> Any | HTTPValidationError | None:
+) -> Union[Any, HTTPValidationError] | None:
     """Revoke Login Token
 
      OAuth2 token revocation.

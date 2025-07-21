@@ -1,23 +1,21 @@
 from http import HTTPStatus
-from typing import Any
+from typing import Any, Union
+from uuid import UUID
 
 import httpx
 
-from ...client import AuthenticatedClient, Client
-from ...types import Response, UNSET
 from ... import errors
-
+from ...client import AuthenticatedClient, Client
 from ...models.entry_public_get import EntryPublicGet
 from ...models.http_validation_error import HTTPValidationError
-from ...types import Unset
-from uuid import UUID
+from ...types import UNSET, Response, Unset
 
 
 def _get_kwargs(
     group_id: UUID,
     *,
-    amount: Unset | int = 100,
-    offset: Unset | int = 0,
+    amount: Union[Unset, int] = 100,
+    offset: Union[Unset, int] = 0,
 ) -> dict[str, Any]:
     params: dict[str, Any] = {}
 
@@ -37,8 +35,8 @@ def _get_kwargs(
 
 
 def _parse_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> HTTPValidationError | list["EntryPublicGet"] | None:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Union[HTTPValidationError, list["EntryPublicGet"]] | None:
     if response.status_code == 200:
         response_200 = []
         _response_200 = response.json()
@@ -59,8 +57,8 @@ def _parse_response(
 
 
 def _build_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Response[HTTPValidationError | list["EntryPublicGet"]]:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Response[Union[HTTPValidationError, list["EntryPublicGet"]]]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -73,9 +71,9 @@ def sync_detailed(
     group_id: UUID,
     *,
     client: AuthenticatedClient,
-    amount: Unset | int = 100,
-    offset: Unset | int = 0,
-) -> Response[HTTPValidationError | list["EntryPublicGet"]]:
+    amount: Union[Unset, int] = 100,
+    offset: Union[Unset, int] = 0,
+) -> Response[Union[HTTPValidationError, list["EntryPublicGet"]]]:
     """Get Group Entries
 
     Args:
@@ -108,9 +106,9 @@ def sync(
     group_id: UUID,
     *,
     client: AuthenticatedClient,
-    amount: Unset | int = 100,
-    offset: Unset | int = 0,
-) -> HTTPValidationError | list["EntryPublicGet"] | None:
+    amount: Union[Unset, int] = 100,
+    offset: Union[Unset, int] = 0,
+) -> Union[HTTPValidationError, list["EntryPublicGet"]] | None:
     """Get Group Entries
 
     Args:
@@ -138,9 +136,9 @@ async def asyncio_detailed(
     group_id: UUID,
     *,
     client: AuthenticatedClient,
-    amount: Unset | int = 100,
-    offset: Unset | int = 0,
-) -> Response[HTTPValidationError | list["EntryPublicGet"]]:
+    amount: Union[Unset, int] = 100,
+    offset: Union[Unset, int] = 0,
+) -> Response[Union[HTTPValidationError, list["EntryPublicGet"]]]:
     """Get Group Entries
 
     Args:
@@ -171,9 +169,9 @@ async def asyncio(
     group_id: UUID,
     *,
     client: AuthenticatedClient,
-    amount: Unset | int = 100,
-    offset: Unset | int = 0,
-) -> HTTPValidationError | list["EntryPublicGet"] | None:
+    amount: Union[Unset, int] = 100,
+    offset: Union[Unset, int] = 0,
+) -> Union[HTTPValidationError, list["EntryPublicGet"]] | None:
     """Get Group Entries
 
     Args:

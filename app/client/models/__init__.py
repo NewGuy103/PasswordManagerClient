@@ -13,7 +13,6 @@ from .group_create import GroupCreate
 from .group_move import GroupMove
 from .group_public_children import GroupPublicChildren
 from .group_public_get import GroupPublicGet
-from .group_public_modify import GroupPublicModify
 from .group_rename import GroupRename
 from .http_validation_error import HTTPValidationError
 from .user_info_public import UserInfoPublic
@@ -33,7 +32,6 @@ __all__ = (
     "GroupMove",
     "GroupPublicChildren",
     "GroupPublicGet",
-    "GroupPublicModify",
     "GroupRename",
     "HTTPValidationError",
     "UserInfoPublic",
